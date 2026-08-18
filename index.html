@@ -96,6 +96,8 @@
   .avail-opt.on-yes{background:#E7F0E3;border-color:#9CB98F;color:#4A6B3E;}
   .avail-opt.on-no{background:#FBEAE6;border-color:var(--accent-soft);color:var(--accent);}
   .avail-hint{margin:0 11px 4px;padding:6px 9px;background:#FFF3E0;border:1px solid #E8C88A;border-radius:7px;font-size:10px;color:#8A6512;line-height:1.35;}
+  .scheduled-badge{margin:0 11px 6px;padding:8px 10px;background:#EEF4EA;border:1px solid #9CB98F;border-radius:8px;font-size:12px;color:#3F6B32;}
+  body.dark-mode .scheduled-badge{background:#22301F;border-color:#5A7A4E;color:#8FBF80;}
   .shift-value{padding:0 14px 4px;font-size:12px;color:var(--ink-soft);}
   .shift-value b{color:var(--ink);font-weight:700;}
   .custom-input-wrap{padding:2px 11px 9px;}
@@ -254,6 +256,7 @@
   .avail-req-row{background:var(--card);border:1px solid #A8C99A;border-radius:8px;padding:8px;margin-bottom:6px;}
   .avail-req-row:last-child{margin-bottom:0;}
   .avail-req-info{font-size:11px;margin-bottom:6px;}
+  .avail-req-note{font-size:11px;color:var(--ink-soft);font-style:italic;margin-top:2px;}
   .avail-req-actions{display:flex;gap:5px;flex-wrap:wrap;}
   .avail-req-btn{flex:0 0 auto;padding:6px 9px;border-radius:12px;border:1px solid #5B8A4A;background:#EEF4EA;color:#3F6B32;font-size:10px;font-weight:700;cursor:pointer;}
   .avail-req-more{flex:0 0 auto;padding:6px 10px;border-radius:12px;border:1px solid var(--line);background:var(--cream);color:var(--ink-soft);font-size:10px;font-weight:700;cursor:pointer;}
@@ -1391,9 +1394,12 @@ function renderAvailablePanel(){
     const d = parseISODateLocal(item.iso);
     const dLabel = `${WEEKDAY_SHORT[(d.getDay()+6)%7].charAt(0).toUpperCase()+WEEKDAY_SHORT[(d.getDay()+6)%7].slice(1)} ${d.getDate()} ${monthShort(d)}`;
     const key = item.iso + '|' + item.name;
+    const wk = shiftsForDate(item.iso);
+    const note = wk['pnote|' + key];
     return `<div class="avail-req-row">
       <div class="avail-req-info" data-name="${escapeHtml(item.name)}" data-iso="${item.iso}" data-day="${escapeHtml(dLabel)}">
         <span class="ur-name">${escapeHtml(item.name)}</span> <span class="ur-date">\u00b7 ${dLabel}</span>
+        ${note ? `<div class="avail-req-note">\u{1F4AC} ${escapeHtml(note)}</div>` : ''}
       </div>
       <div class="avail-req-actions">
         ${quickOnes.map(opt => `<button type="button" class="avail-req-btn" data-key="${key}" data-value="${escapeHtml(opt.value)}">${opt.label}</button>`).join('')}
@@ -1664,12 +1670,19 @@ document.getElementById('assignCancel').addEventListener('click', ()=>{
 });
 
 // ---------- fill in (always personal) ----------
+/**
+ * Renders the "Fill in" tab for the active user: just Available/Unavailable
+ * per day, plus an optional short note for constraints (e.g. "can work till
+ * 1am"). Employees no longer pick a shift time themselves \u2014 an owner assigns
+ * the actual time via the Owner tab, based on who's available and what they
+ * noted. If a shift has already been assigned, it's shown read-only here.
+ */
 function renderDays(){
   const container = document.getElementById('days');
   container.innerHTML = '';
 
   if(!activeUser){
-    container.innerHTML = `<div class="mine-prompt">Choose your name to fill in your shifts.<br><button id="fillPickBtn">Choose name</button></div>`;
+    container.innerHTML = `<div class="mine-prompt">Choose your name to set your availability.<br><button id="fillPickBtn">Choose name</button></div>`;
     document.getElementById('fillPickBtn').addEventListener('click', openWhoDialog);
     return;
   }
@@ -1684,16 +1697,10 @@ function renderDays(){
     const isToday = iso === todayISO;
     const key = iso + '|' + name;
     const availKey = 'avail|' + key;
+    const noteKey = 'pnote|' + key;
     const availVal = shifts[availKey] || '';
     const currentVal = shifts[key] || '';
-    const isNightPreset = NIGHT_OPTIONS.some(o => o.value === currentVal);
-    const isDayPreset = DAY_OPTIONS.some(o => o.value === currentVal);
-    const isPreset = isNightPreset || isDayPreset;
-    const isCustom = currentVal && !isPreset;
-
-    if(!dayShiftMode[iso]) dayShiftMode[iso] = isDayPreset ? 'day' : 'night';
-    const mode = dayShiftMode[iso];
-    const activeOptions = mode === 'day' ? DAY_OPTIONS : NIGHT_OPTIONS;
+    const noteVal = shifts[noteKey] || '';
 
     const card = document.createElement('div');
     card.className = 'day-card';
@@ -1706,36 +1713,15 @@ function renderDays(){
         <button type="button" class="avail-opt${availVal==='yes'?' on-yes':''}" data-availkey="${availKey}" data-set="yes">Available</button>
         <button type="button" class="avail-opt${availVal==='no'?' on-no':''}" data-availkey="${availKey}" data-set="no">Unavailable</button>
       </div>
-      ${availVal === 'yes' && !currentVal ? '<div class="avail-hint">You\u2019re marked available, but no shift time is set yet \u2014 pick one below so it shows as scheduled.</div>' : ''}
-      ${availVal === 'no' && currentVal ? '<div class="avail-hint" style="background:#FBEAE6;border-color:#E8A99A;color:#B33A2E;">You\u2019re marked unavailable, but a shift time (' + escapeHtml(currentVal) + ') is still set \u2014 clear it below, or switch back to Available.</div>' : ''}
-      <div class="field-label">Shift
-        <span class="dn-toggle">
-          <button type="button" class="dn-btn${mode==='day'?' on':''}" data-iso="${iso}" data-mode="day">Day</button>
-          <button type="button" class="dn-btn${mode==='night'?' on':''}" data-iso="${iso}" data-mode="night">Night</button>
-        </span>
+      ${currentVal ? `<div class="scheduled-badge">\u{1F4C5} Scheduled: <b>${escapeHtml(currentVal)}</b></div>` : ''}
+      ${availVal === 'no' && currentVal ? '<div class="avail-hint" style="background:#FBEAE6;border-color:#E8A99A;color:#B33A2E;">You\u2019re marked unavailable, but a shift (' + escapeHtml(currentVal) + ') is still assigned \u2014 let an owner know.</div>' : ''}
+      <div class="field-label">Note (optional)</div>
+      <div class="custom-input-wrap" style="padding-top:0;">
+        <input type="text" data-notekey="${noteKey}" placeholder="e.g. can work till 1am" value="${escapeHtml(noteVal)}" class="${noteVal ? 'filled':''}" maxlength="60">
       </div>
-      <div class="quick-times">
-        ${activeOptions.map(opt =>
-          `<button type="button" class="qt-btn${currentVal===opt.value?' selected':''}" data-key="${key}" data-value="${escapeHtml(opt.value)}">${opt.label}</button>`
-        ).join('')}
-        <button type="button" class="qt-btn custom-btn${isCustom?' selected':''}" data-key="${key}">Custom</button>
-      </div>
-      <div class="custom-input-wrap" style="display:${isCustom ? 'block':'none'};">
-        <input type="text" data-key="${key}" placeholder="e.g. 15:00-19:00" value="${escapeHtml(isCustom ? currentVal : '')}" class="${isCustom ? 'filled':''}">
-      </div>
-      <div class="time-hint" id="hint-${i}">${isCustom && !looksLikeShift(currentVal) ? 'Unrecognized time \u2014 won\u2019t count toward hours or live status' : ''}</div>
     `;
     container.appendChild(card);
   }
-
-  // day/night toggle
-  container.querySelectorAll('.dn-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      dayShiftMode[btn.getAttribute('data-iso')] = btn.getAttribute('data-mode');
-      try{ localStorage.setItem('echo_rooster_shift_mode', JSON.stringify(dayShiftMode)); }catch(e){}
-      renderDays();
-    });
-  });
 
   // availability toggle: tap to select, tap again to clear
   container.querySelectorAll('.avail-opt').forEach(btn=>{
@@ -1757,74 +1743,27 @@ function renderDays(){
     });
   });
 
-  // preset shift chips
-  container.querySelectorAll('.qt-btn:not(.custom-btn)').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const key = btn.getAttribute('data-key');
-      const value = btn.getAttribute('data-value');
-      const wk = currentWeekShifts();
-      AppState.locallyTouched.add(key);
-      captureUndoSnapshot('a shift change');
-      if(wk[key] === value){
-        delete wk[key];
-        logChange(`Cleared shift for ${key.split('|')[1]} on ${key.split('|')[0]}`);
-      } else {
-        wk[key] = value;
-        logChange(`Set ${key.split('|')[1]}'s shift to ${value} on ${key.split('|')[0]}`);
-      }
-      renderDays();
-      renderTodayStrip();
-      renderLiveBanner();
-      queueSave();
-    });
-  });
-
-  // custom chip: reveal input, focus it
-  container.querySelectorAll('.custom-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const card = btn.closest('.day-card');
-      const wrap = card.querySelector('.custom-input-wrap');
-      const wasOpen = wrap.style.display === 'block';
-      if(wasOpen){
-        wrap.style.display = 'none';
-      } else {
-        wrap.style.display = 'block';
-        wrap.querySelector('input').focus();
-      }
-    });
-  });
-
-  // custom text input
+  // constraint note
   container.querySelectorAll('.custom-input-wrap input').forEach(inp=>{
-    inp.addEventListener('focus', ()=>{
-      AppState.isTyping = true;
-      captureUndoSnapshot('a custom shift edit');
-    });
+    inp.addEventListener('focus', ()=>{ AppState.isTyping = true; });
     inp.addEventListener('blur', ()=>{
       AppState.isTyping = false;
-      const key = inp.getAttribute('data-key');
+      const noteKey = inp.getAttribute('data-notekey');
       const val = inp.value.trim();
-      if(val) logChange(`Set ${key.split('|')[1]}'s shift to "${val}" on ${key.split('|')[0]}`);
+      if(val) logChange(`Added a note for ${noteKey.split('|')[2]} on ${noteKey.split('|')[1]}: "${val}"`);
     });
     inp.addEventListener('input', ()=>{
-      const key = inp.getAttribute('data-key');
+      const noteKey = inp.getAttribute('data-notekey');
       const val = sanitizeShiftText(inp.value);
       const wk = currentWeekShifts();
-      const card = inp.closest('.day-card');
-      const dayIdx = Array.from(container.children).indexOf(card);
-      const hintEl = document.getElementById('hint-' + dayIdx);
-      AppState.locallyTouched.add(key);
+      AppState.locallyTouched.add(noteKey);
       if(val){
-        wk[key] = val;
+        wk[noteKey] = val;
         inp.classList.add('filled');
-        if(hintEl) hintEl.textContent = looksLikeShift(val) ? '' : 'Unrecognized time \u2014 won\u2019t count toward hours or live status';
       } else {
-        delete wk[key];
+        delete wk[noteKey];
         inp.classList.remove('filled');
-        if(hintEl) hintEl.textContent = '';
       }
-      renderTodayStrip();
-      renderLiveBanner();
       queueSave();
     });
   });
@@ -1936,8 +1875,8 @@ function setViewMode(mode){
     editEl.style.display = 'block';
     whobarEl.style.display = 'flex';
     legend.textContent = activeUser
-      ? 'Pick your availability, then tap a shift time \u2014 or "Custom" for something else'
-      : 'Choose your name above to fill in your own shifts';
+      ? 'Set your availability \u2014 an owner will assign your shift time'
+      : 'Choose your name above to set your availability';
     renderDays();
   } else if(mode === 'mine'){
     mineTab.classList.add('active');
