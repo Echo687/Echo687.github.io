@@ -683,7 +683,24 @@ function getMonday(d){
   date.setHours(0,0,0,0);
   return date;
 }
-function fmtISO(d){ return d.toISOString().slice(0,10); }
+/**
+ * Formats a Date as YYYY-MM-DD using LOCAL date components (not toISOString(),
+ * which converts to UTC and silently shifts the date by one day for anyone in
+ * a positive UTC-offset timezone, e.g. the Netherlands \u2014 local midnight of a
+ * given day is still the previous day in UTC, so toISOString() returned the
+ * wrong date for every shift/availability entry in the app).
+ */
+function fmtISO(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+/** Parses a YYYY-MM-DD string into a Date at LOCAL midnight, avoiding the UTC-parsing ambiguity of `new Date(iso)`. */
+function parseISODateLocal(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
 function addDays(d, n){ const nd = new Date(d); nd.setDate(nd.getDate()+n); return nd; }
 
 /** Shows a brief flash message under the tabs (legacy, still used for one-off notices). */
@@ -898,7 +915,7 @@ function currentWeekShifts(){
 }
 
 function shiftsForDate(iso){
-  const monday = getMonday(new Date(iso));
+  const monday = getMonday(parseISODateLocal(iso));
   return allWeeks[fmtISO(monday)] || {};
 }
 
@@ -1331,7 +1348,7 @@ function renderUnresolvedPanel(){
     return;
   }
   const rows = items.map(item=>{
-    const d = new Date(item.iso);
+    const d = parseISODateLocal(item.iso);
     const dLabel = `${WEEKDAY_SHORT[(d.getDay()+6)%7].charAt(0).toUpperCase()+WEEKDAY_SHORT[(d.getDay()+6)%7].slice(1)} ${d.getDate()} ${monthShort(d)}`;
     return `<div class="unresolved-row" data-name="${escapeHtml(item.name)}" data-iso="${item.iso}" data-day="${escapeHtml(dLabel)}">
       <div><span class="ur-name">${escapeHtml(item.name)}</span> <span class="ur-date">\u00b7 ${dLabel}</span></div>
@@ -1360,7 +1377,7 @@ function renderConflictsPanel(){
     return;
   }
   const rows = items.map(item=>{
-    const d = new Date(item.iso);
+    const d = parseISODateLocal(item.iso);
     const dLabel = `${WEEKDAY_SHORT[(d.getDay()+6)%7].charAt(0).toUpperCase()+WEEKDAY_SHORT[(d.getDay()+6)%7].slice(1)} ${d.getDate()} ${monthShort(d)}`;
     return `<div class="conflict-row" data-name="${escapeHtml(item.name)}" data-iso="${item.iso}" data-day="${escapeHtml(dLabel)}">
       <div><span class="ur-name">${escapeHtml(item.name)}</span> <span class="ur-date">\u00b7 ${dLabel}</span> <span class="cf-time">${escapeHtml(item.value)}</span></div>
