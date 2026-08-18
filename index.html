@@ -296,14 +296,23 @@
     #lockScreen, header, #todayStrip, .viewtabs, .pdf-btn-wrap, .util-row, main{display:none !important;}
     #printMonth{display:block !important;}
     body{background:#fff;padding:0;}
+    @page{margin:16mm 14mm;}
   }
-  #printMonth h2{font-size:18px;margin:0 0 2px;}
-  #printMonth .pm-sub{font-size:11px;color:var(--ink-soft);margin-bottom:14px;}
-  #printMonth table{width:100%;border-collapse:collapse;font-size:11px;}
-  #printMonth th{text-align:left;border-bottom:2px solid var(--ink);padding:5px 6px;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;}
-  #printMonth td{border-bottom:1px solid var(--line);padding:5px 6px;vertical-align:top;}
-  #printMonth td.pm-date{white-space:nowrap;font-weight:700;width:70px;}
-  #printMonth tr.pm-weekend td{background:#F7F2E8;}
+  #printMonth{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:#241F19;max-width:720px;margin:0 auto;padding:8px 4px;}
+  #printMonth .pm-header{display:flex;align-items:baseline;gap:14px;border-bottom:3px solid #C1502E;padding-bottom:12px;margin-bottom:18px;}
+  #printMonth .pm-logo{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:30px;letter-spacing:-0.01em;color:#C1502E;line-height:1;}
+  #printMonth .pm-headertext{flex:1;}
+  #printMonth .pm-headertitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6B6255;margin-bottom:2px;}
+  #printMonth .pm-sub{font-size:16px;font-weight:700;color:#241F19;}
+  #printMonth table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  #printMonth th{text-align:left;border-bottom:2px solid #241F19;padding:7px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#6B6255;}
+  #printMonth td{border-bottom:1px solid #DDD3C0;padding:8px 8px;vertical-align:top;line-height:1.5;}
+  #printMonth td.pm-date{white-space:nowrap;font-weight:700;width:64px;}
+  #printMonth tr.pm-weekend td{background:#FBF8F1;}
+  #printMonth .pm-time{color:#C1502E;font-weight:600;}
+  #printMonth .pm-none{color:#A69B8A;font-style:italic;}
+  #printMonth .pm-note{font-size:10.5px;color:#8A6512;margin-top:4px;}
+  #printMonth .pm-footer{margin-top:16px;font-size:9.5px;color:#A69B8A;text-align:center;}
 </style>
 </head>
 <body>
@@ -1983,6 +1992,19 @@ document.getElementById('jumpDateInput').addEventListener('change', (e)=>{
 });
 
 // ---------- PDF month export ----------
+/** Shared header markup for both printouts: the Echo wordmark plus a title/subtitle line. */
+function printHeaderHtml(subtitle){
+  return `
+    <div class="pm-header">
+      <div class="pm-logo">ECHO</div>
+      <div class="pm-headertext">
+        <div class="pm-headertitle">Team Schedule</div>
+        <div class="pm-sub">${subtitle}</div>
+      </div>
+    </div>
+  `;
+}
+
 function buildPrintMonth(){
   const year = weekStart.getFullYear();
   const month = weekStart.getMonth();
@@ -1998,32 +2020,31 @@ function buildPrintMonth(){
     const dowIndex = jsDay === 0 ? 6 : jsDay - 1;
     const isWeekend = jsDay === 0 || jsDay === 6;
 
+    // Only people with a real, confirmed shift time \u2014 "unavailable" and
+    // "available, not yet assigned" are internal planning info, not for the printout.
     const entries = staff
       .map(name=>{
         const time = wk[iso + '|' + name];
-        const avail = wk['avail|' + iso + '|' + name];
-        if(time) return `${name} (${time})`;
-        if(avail === 'no') return `${name} \u2014 unavailable`;
-        return null;
+        return time ? `${name} <span class="pm-time">${escapeHtml(time)}</span>` : null;
       })
       .filter(Boolean);
 
     rows += `<tr class="${isWeekend ? 'pm-weekend':''}">
       <td class="pm-date">${day} ${dayLetters[dowIndex]}</td>
-      <td>${entries.length ? entries.join(', ') : '&mdash;'}</td>
+      <td>${entries.length ? entries.join(', ') : '<span class="pm-none">\u2014 nobody scheduled</span>'}</td>
     </tr>`;
   }
 
   document.getElementById('printMonth').innerHTML = `
-    <h2>Echo Schedule</h2>
-    <div class="pm-sub">${MONTH_NAMES[month]} ${year}</div>
+    ${printHeaderHtml(`${MONTH_NAMES[month]} ${year}`)}
     <table>
       <thead><tr><th>Date</th><th>Who's working</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
+    <div class="pm-footer">Generated ${new Date().toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'})} \u00b7 Echo Schedule</div>
   `;
 }
-/** Builds a compact, wall-poster-style printable table of just the currently viewed week. */
+/** Builds a clean, wall-poster-style printable table of just the currently viewed week. */
 function buildPrintWeek(){
   const shifts = currentWeekShifts();
   const dayLetters = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
@@ -2038,27 +2059,24 @@ function buildPrintWeek(){
     const entries = staff
       .map(name=>{
         const time = shifts[iso + '|' + name];
-        const avail = shifts['avail|' + iso + '|' + name];
-        if(time) return `${name} (${time})`;
-        if(avail === 'no') return `${name} \u2014 unavailable`;
-        return null;
+        return time ? `${name} <span class="pm-time">${escapeHtml(time)}</span>` : null;
       })
       .filter(Boolean);
 
     rows += `<tr class="${isWeekend ? 'pm-weekend':''}">
       <td class="pm-date">${dayLetters[i]}<br>${d.getDate()}</td>
-      <td>${entries.length ? entries.join(', ') : '&mdash;'}${note ? `<div style="font-size:10px;color:#8A6512;margin-top:3px;">\u{1F4DD} ${escapeHtml(note)}</div>` : ''}</td>
+      <td>${entries.length ? entries.join(', ') : '<span class="pm-none">\u2014 nobody scheduled</span>'}${note ? `<div class="pm-note">\u{1F4DD} ${escapeHtml(note)}</div>` : ''}</td>
     </tr>`;
   }
 
   const end = addDays(weekStart, 6);
   document.getElementById('printMonth').innerHTML = `
-    <h2>Echo Schedule</h2>
-    <div class="pm-sub">Week of ${monthShort(weekStart)} ${weekStart.getDate()} \u2013 ${monthShort(end)} ${end.getDate()}, ${weekStart.getFullYear()}</div>
+    ${printHeaderHtml(`Week of ${monthShort(weekStart)} ${weekStart.getDate()} \u2013 ${monthShort(end)} ${end.getDate()}, ${weekStart.getFullYear()}`)}
     <table>
       <thead><tr><th>Day</th><th>Who's working</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
+    <div class="pm-footer">Generated ${new Date().toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'})} \u00b7 Echo Schedule</div>
   `;
 }
 document.getElementById('printWeekBtn').addEventListener('click', ()=>{
