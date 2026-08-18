@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Echo Schedule</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20200%20200%22%3E%3Crect%20width%3D%22200%22%20height%3D%22200%22%20rx%3D%2242%22%20fill%3D%22%23C1502E%22/%3E%3Ctext%20x%3D%22100%22%20y%3D%22148%22%20font-family%3D%22Georgia%2C%20Times%2C%20serif%22%20font-size%3D%22140%22%20font-weight%3D%22700%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3EE%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20200%20200%22%3E%3Crect%20width%3D%22200%22%20height%3D%22200%22%20rx%3D%2242%22%20fill%3D%22%23C1502E%22/%3E%3Ctext%20x%3D%22100%22%20y%3D%22148%22%20font-family%3D%22Georgia%2C%20Times%2C%20serif%22%20font-size%3D%22140%22%20font-weight%3D%22700%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3EE%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%20%22Echo%20Schedule%22%2C%20%22short_name%22%3A%20%22Echo%22%2C%20%22start_url%22%3A%20%22.%22%2C%20%22display%22%3A%20%22standalone%22%2C%20%22background_color%22%3A%20%22%23FFFFFF%22%2C%20%22theme_color%22%3A%20%22%23C1502E%22%2C%20%22icons%22%3A%20%5B%7B%22src%22%3A%20%22data%3Aimage/svg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A//www.w3.org/2000/svg%2522%2520viewBox%253D%25220%25200%2520200%2520200%2522%253E%253Crect%2520width%253D%2522200%2522%2520height%253D%2522200%2522%2520rx%253D%252242%2522%2520fill%253D%2522%2523C1502E%2522/%253E%253Ctext%2520x%253D%2522100%2522%2520y%253D%2522148%2522%2520font-family%253D%2522Georgia%252C%2520Times%252C%2520serif%2522%2520font-size%253D%2522140%2522%2520font-weight%253D%2522700%2522%2520fill%253D%2522%2523FFFFFF%2522%2520text-anchor%253D%2522middle%2522%253EE%253C/text%253E%253C/svg%253E%22%2C%20%22sizes%22%3A%20%22any%22%2C%20%22type%22%3A%20%22image/svg%2Bxml%22%2C%20%22purpose%22%3A%20%22any%20maskable%22%7D%5D%7D">
+<meta name="theme-color" content="#C1502E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Echo">
 <style>
   :root{
     --cream:#FFFFFF; --card:#FFFFFF; --ink:#241F19; --ink-soft:#6B6255;
@@ -137,6 +145,7 @@
   .today-strip .t-row{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;}
   .today-strip .t-row b{font-weight:700;}
   .today-strip .t-empty{font-size:13px;opacity:0.9;}
+  .today-strip .t-note{background:rgba(255,255,255,0.18);border-radius:7px;padding:6px 9px;font-size:12px;margin-bottom:6px;}
 
   .live-banner{background:var(--ink);color:#fff;border-radius:10px;padding:10px 12px;margin:10px 10px 0;box-shadow:0 4px 14px rgba(36,31,25,0.22);}
   .live-banner .l-label{display:flex;align-items:center;gap:7px;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;font-weight:800;color:#9CE0A8;margin-bottom:8px;}
@@ -177,6 +186,7 @@
   .mine-row .v{color:var(--accent);font-weight:600;}
   .mine-row .v.no{color:#B33A2E;}
   .mine-empty{padding:20px 10px;text-align:center;font-size:13px;color:var(--ink-soft);font-style:italic;}
+  .mine-hours-total{background:var(--ink);color:var(--cream);text-align:center;font-weight:800;font-size:14px;padding:10px;border-radius:9px;margin-bottom:10px;}
   .mine-prompt{padding:26px 14px;text-align:center;font-size:13px;color:var(--ink-soft);}
   .mine-prompt button{margin-top:10px;background:var(--accent);color:#fff;border:none;border-radius:20px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;}
 
@@ -208,6 +218,7 @@
   table.ov-grid td.cell.no{color:#B33A2E;font-weight:600;background:#FBEAE6;}
   table.ov-grid td.cell.yes-only{color:#4A6B3E;font-weight:600;background:#EEF4EA;}
   table.ov-grid td.cell.live{background:#1F1B16;color:#3FCF6E;font-weight:800;position:relative;}
+  table.ov-grid td.cell.conflict{background:repeating-linear-gradient(45deg,#FBEAE6,#FBEAE6 4px,#F5D5CE 4px,#F5D5CE 8px);color:#B33A2E;font-weight:800;border:1px solid #B33A2E;}
   table.ov-grid td.cell.live::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#3FCF6E;margin-right:4px;animation:pulse 1.8s infinite;}
   .jump-date-row{display:flex;align-items:center;gap:8px;padding:0 0 12px;font-size:12px;color:var(--ink-soft);}
   .jump-date-row input[type=date]{flex:1;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;font-family:inherit;background:var(--card);color:var(--ink);}
@@ -219,6 +230,9 @@
     50%{box-shadow:0 2px 16px rgba(217,138,30,0.5);}
   }
   .cov-row td{font-weight:800 !important;background:#F7F2E8 !important;color:var(--ink) !important;border-top:2px solid var(--line);}
+  .note-row td{background:#FBF8F1 !important;border-top:1px solid var(--line);}
+  table.ov-grid td.note-cell{cursor:pointer;color:var(--ink-soft);font-size:13px;}
+  table.ov-grid td.note-cell.has-note{color:var(--accent);background:#FFF3E0 !important;}
   table.ov-grid td.cov-gap{background:#FBEAE6 !important;color:#B33A2E !important;font-weight:800 !important;}
   table.ov-grid thead th.cov-gap-head{background:#FBEAE6;color:#B33A2E;}
   .unresolved-panel .up-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#8A6512;margin-bottom:8px;}
@@ -227,6 +241,21 @@
   .unresolved-row .ur-name{font-weight:700;}
   .unresolved-row .ur-date{color:var(--ink-soft);font-size:11px;}
   .unresolved-row .ur-fix{color:#8A6512;font-weight:700;font-size:11px;}
+
+  .conflicts-panel{background:#FBEAE6;border:2px solid #B33A2E;border-radius:10px;padding:10px 12px;margin-bottom:10px;box-shadow:0 2px 10px rgba(179,58,46,0.25);animation:cf-pulse 2s infinite;}
+  @keyframes cf-pulse{
+    0%,100%{box-shadow:0 2px 10px rgba(179,58,46,0.25);}
+    50%{box-shadow:0 2px 18px rgba(179,58,46,0.55);}
+  }
+  .conflicts-panel .cf-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#B33A2E;margin-bottom:8px;}
+  .conflict-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid #E8A99A;border-radius:7px;padding:6px 8px;margin-bottom:5px;font-size:11px;cursor:pointer;}
+  .conflict-row:last-child{margin-bottom:0;}
+  .conflict-row .ur-name{font-weight:700;}
+  .conflict-row .ur-date{color:var(--ink-soft);font-size:11px;}
+  .conflict-row .cf-time{color:#B33A2E;font-weight:700;font-size:11px;}
+  .conflict-row .cf-fix{color:#B33A2E;font-weight:700;font-size:11px;}
+  body.dark-mode .conflicts-panel{background:#3A241D;border-color:#8A3F2E;}
+
   .ov-legend{display:flex;gap:12px;flex-wrap:wrap;padding:10px 2px 0;font-size:10px;color:var(--ink-soft);}
   .ov-legend span{display:inline-flex;align-items:center;gap:4px;}
   .ov-legend i{width:9px;height:9px;border-radius:3px;display:inline-block;}
@@ -281,6 +310,7 @@
     <span class="sync-dot sync-idle" id="syncDot"></span>
     <span id="syncLabel">Not synced yet</span>
   </div>
+  <button id="undoBtn" style="display:none;width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid var(--accent);background:none;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;">&#8630; Undo last change</button>
 </header>
 
 <div id="liveBanner" class="live-banner" style="display:none;">
@@ -326,6 +356,7 @@
 
   <div id="ownerView" style="display:none;">
     <div id="unresolvedPanel" style="display:none;"></div>
+    <div id="conflictsPanel" style="display:none;"></div>
     <div class="jump-date-row">
       <label for="jumpDateInput">Jump to a week:</label>
       <input type="date" id="jumpDateInput">
@@ -340,9 +371,11 @@
         <span><i style="background:#FFF7E6;border:1px solid var(--line);"></i>Not filled in</span>
         <span><i style="background:#FBEAE6;"></i>Unavailable</span>
         <span><i style="background:#EEF4EA;"></i>Available (no time)</span>
+        <span><i style="background:repeating-linear-gradient(45deg,#FBEAE6,#FBEAE6 2px,#F5D5CE 2px,#F5D5CE 4px);border:1px solid #B33A2E;"></i>Conflict</span>
       </div>
     </div>
     <div class="pdf-btn-wrap" style="padding:14px 0 0;">
+      <button id="printWeekBtn" class="pdf-btn" style="margin-bottom:8px;">&#128424;&#65039; Print this week</button>
       <button id="pdfBtn" class="pdf-btn">&#8681; Download month as PDF</button>
     </div>
     <div class="util-row" style="padding:8px 0 0;">
@@ -436,6 +469,18 @@
       <button class="cancel" id="assignClear">Clear</button>
       <button class="cancel" id="assignCancel">Cancel</button>
       <button class="confirm" id="assignSave">Save</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="noteDialog">
+  <div class="dialog-inner">
+    <h3>Day note</h3>
+    <div style="font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;" id="noteDay"></div>
+    <input type="text" id="noteInput" placeholder="e.g. Staff party tonight, expect busy" maxlength="80">
+    <div class="dialog-actions">
+      <button class="cancel" id="noteCancel">Cancel</button>
+      <button class="confirm" id="noteSave">Save</button>
     </div>
   </div>
 </dialog>
@@ -585,8 +630,44 @@ const AppState = {
   dirty: false,
   syncStatus: 'idle',
   lastSyncedAt: null,
-  locallyTouched: new Set()
+  locallyTouched: new Set(),
+  undoSnapshot: null,
+  undoLabel: ''
 };
+
+/** Captures the current staff/schedule state so a subsequent edit can be undone. Call BEFORE mutating. */
+function captureUndoSnapshot(label){
+  try{
+    AppState.undoSnapshot = JSON.stringify({ staff, allWeeks });
+    AppState.undoLabel = label || 'last change';
+    updateUndoButton();
+  }catch(e){ /* ignore */ }
+}
+
+/** Restores state from the last captured snapshot, if any. */
+function performUndo(){
+  if(!AppState.undoSnapshot) return;
+  try{
+    const restored = JSON.parse(AppState.undoSnapshot);
+    staff = restored.staff;
+    allWeeks = restored.allWeeks;
+    logChange(`Undid: ${AppState.undoLabel}`);
+    AppState.undoSnapshot = null;
+    AppState.undoLabel = '';
+    updateUndoButton();
+    if(viewMode === 'owner'){ renderOverview(); } else { renderDays(); }
+    renderTodayStrip();
+    renderLiveBanner();
+    renderWhoBar();
+    queueSave();
+  }catch(e){ /* ignore */ }
+}
+
+function updateUndoButton(){
+  const btn = document.getElementById('undoBtn');
+  if(!btn) return;
+  btn.style.display = AppState.undoSnapshot ? 'block' : 'none';
+}
 
 function getMonday(d){
   const date = new Date(d);
@@ -897,6 +978,20 @@ function weeklyHoursFor(name){
   return totalMin / 60;
 }
 
+/** Total hours for `name` between two dates (inclusive), across however many weeks that spans. */
+function hoursForRange(start, end, name){
+  let totalMin = 0;
+  let cursor = new Date(start);
+  while(cursor <= end){
+    const iso = fmtISO(cursor);
+    const wk = shiftsForDate(iso);
+    const r = parseTimeRange(wk[iso + '|' + name]);
+    if(r) totalMin += r.durationMin;
+    cursor = addDays(cursor, 1);
+  }
+  return totalMin / 60;
+}
+
 function renderLiveBanner(){
   const banner = document.getElementById('liveBanner');
   if(!ownerUnlocked){
@@ -1009,6 +1104,7 @@ function renderTeamList(){
           errEl.textContent = `${newName} is already on the team.`;
           return;
         }
+        captureUndoSnapshot(`renaming ${oldName} to ${newName}`);
         renameStaffEverywhere(oldName, newName);
         renderTeamList();
         if(viewMode === 'owner'){ renderOverview(); } else { renderDays(); }
@@ -1051,6 +1147,7 @@ document.getElementById('confirmRemoveOk').addEventListener('click', ()=>{
   const name = dialog.dataset.name;
   dialog.close();
 
+  captureUndoSnapshot(`removing ${name}`);
   staff = staff.filter(s=>s!==name);
   ovHidden.delete(name);
   if(activeUser === name){
@@ -1079,6 +1176,7 @@ document.getElementById('confirmAdd').addEventListener('click', ()=>{
   const name = sanitizeName(input.value);
   if(!name){ return; }
   if(!staff.includes(name)){
+    captureUndoSnapshot(`adding ${name}`);
     staff.push(name);
     logChange(`Added ${name} to the team`);
     renderTeamList();
@@ -1134,19 +1232,22 @@ function renderTodayStrip(){
   const today = new Date();
   const todayIso = fmtISO(today);
   const wk = shiftsForDate(todayIso);
+  const note = wk['note|' + todayIso];
 
   const rows = staff
     .map(name => ({ name, time: wk[todayIso + '|' + name], avail: wk['avail|' + todayIso + '|' + name] }))
     .filter(r => r.time || r.avail);
 
+  let html = note ? `<div class="t-note">\u{1F4DD} ${escapeHtml(note)}</div>` : '';
   if(rows.length === 0){
-    content.innerHTML = `<div class="t-empty">Nobody scheduled today yet</div>`;
+    html += `<div class="t-empty">Nobody scheduled today yet</div>`;
   } else {
-    content.innerHTML = rows.map(r => {
+    html += rows.map(r => {
       const label = r.time ? r.time : (r.avail === 'no' ? 'Unavailable' : 'Available');
       return `<div class="t-row"><span>${escapeHtml(r.name)}</span><b>${escapeHtml(label)}</b></div>`;
     }).join('');
   }
+  content.innerHTML = html;
   strip.style.display = 'block';
 }
 
@@ -1187,6 +1288,34 @@ function findUnresolvedClosings(){
   return results;
 }
 
+/**
+ * Finds "conflicts": a person marked Unavailable on a day that also has a real
+ * shift time set for them \u2014 usually means someone got scheduled after saying
+ * they couldn't work, or marked themselves unavailable after already being
+ * assigned. Looks at the current week plus the next 2 weeks (upcoming shifts
+ * matter most here, unlike unresolved closings which look at the past).
+ */
+function findConflicts(){
+  const todayISO = fmtISO(new Date());
+  const cutoffISO = fmtISO(addDays(new Date(), 21));
+  const results = [];
+  Object.keys(allWeeks).forEach(weekKey=>{
+    const wk = allWeeks[weekKey];
+    Object.keys(wk).forEach(k=>{
+      if(!k.startsWith('avail|')) return;
+      if(wk[k] !== 'no') return;
+      const parts = k.split('|'); // ['avail', iso, name]
+      const iso = parts[1], name = parts[2];
+      const time = wk[iso + '|' + name];
+      if(time && iso >= todayISO && iso <= cutoffISO){
+        results.push({ iso, name, value: time });
+      }
+    });
+  });
+  results.sort((a,b)=> a.iso < b.iso ? -1 : 1);
+  return results;
+}
+
 function renderUnresolvedPanel(){
   const panel = document.getElementById('unresolvedPanel');
   const items = findUnresolvedClosings();
@@ -1215,6 +1344,35 @@ function renderUnresolvedPanel(){
   });
 }
 
+/** Shows a red alert panel when someone marked Unavailable is nonetheless scheduled. */
+function renderConflictsPanel(){
+  const panel = document.getElementById('conflictsPanel');
+  const items = findConflicts();
+  if(items.length === 0){
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+  const rows = items.map(item=>{
+    const d = new Date(item.iso);
+    const dLabel = `${WEEKDAY_SHORT[(d.getDay()+6)%7].charAt(0).toUpperCase()+WEEKDAY_SHORT[(d.getDay()+6)%7].slice(1)} ${d.getDate()} ${monthShort(d)}`;
+    return `<div class="conflict-row" data-name="${escapeHtml(item.name)}" data-iso="${item.iso}" data-day="${escapeHtml(dLabel)}">
+      <div><span class="ur-name">${escapeHtml(item.name)}</span> <span class="ur-date">\u00b7 ${dLabel}</span> <span class="cf-time">${escapeHtml(item.value)}</span></div>
+      <span class="cf-fix">Resolve \u203a</span>
+    </div>`;
+  }).join('');
+  panel.innerHTML = `
+    <div class="cf-title">&#128721; Scheduled while unavailable (${items.length})</div>
+    ${rows}
+  `;
+  panel.style.display = 'block';
+  panel.querySelectorAll('.conflict-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      openAssignDialog(row.getAttribute('data-name'), row.getAttribute('data-iso'), row.getAttribute('data-day'));
+    });
+  });
+}
+
 /**
  * Renders the owner's weekly overview table: one row per visible team member,
  * one column per day, plus a coverage-summary row and gap highlighting for
@@ -1222,6 +1380,7 @@ function renderUnresolvedPanel(){
  */
 function renderOverview(){
   renderUnresolvedPanel();
+  renderConflictsPanel();
   renderOvFilterBar();
   const wrap = document.getElementById('ovTableWrap');
   const now = new Date();
@@ -1265,7 +1424,11 @@ function renderOverview(){
       if(time){ cls = ''; label = escapeHtml(time); }
       else if(avail === 'no'){ cls = 'no'; label = 'No'; }
       else if(avail === 'yes'){ cls = 'yes-only'; label = 'OK'; }
-      if(c.isToday && time && isWorkingNow(time, nowMin)){
+      if(time && avail === 'no'){
+        cls = 'conflict';
+        label = '\u26d4 ' + escapeHtml(time);
+      }
+      if(c.isToday && time && isWorkingNow(time, nowMin) && avail !== 'no'){
         cls = 'live';
       }
       tbody += `<td class="cell ${cls}" data-name="${escapeHtml(name)}" data-iso="${c.iso}" data-day="${c.label} ${c.date}">${label}</td>`;
@@ -1278,6 +1441,14 @@ function renderOverview(){
     coverageCounts.map(n => `<td class="${n===0?'cov-gap':''}">${n}</td>`).join('') +
     '</tr>';
 
+  // Notes row: click a day's cell to add/edit a short note for that day (e.g. "staff party, expect busy").
+  tbody += '<tr class="note-row"><td class="namecol">Notes</td>' +
+    dayCols.map(c=>{
+      const note = shifts['note|' + c.iso] || '';
+      return `<td class="note-cell${note ? ' has-note' : ''}" data-iso="${c.iso}" data-day="${c.label} ${c.date}" title="${escapeHtml(note)}">${note ? '\u{1F4DD}' : '+'}</td>`;
+    }).join('') +
+    '</tr>';
+
   wrap.innerHTML = `<div class="ov-tablewrap"><table class="ov-grid"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
 
   wrap.querySelectorAll('td.cell').forEach(td=>{
@@ -1286,7 +1457,43 @@ function renderOverview(){
       openAssignDialog(td.getAttribute('data-name'), td.getAttribute('data-iso'), td.getAttribute('data-day'));
     });
   });
+  wrap.querySelectorAll('td.note-cell').forEach(td=>{
+    td.addEventListener('click', ()=>{
+      openNoteDialog(td.getAttribute('data-iso'), td.getAttribute('data-day'));
+    });
+  });
 }
+
+// ---------- owner: per-day notes (e.g. "staff party tonight, expect busy") ----------
+function openNoteDialog(iso, dayLabel){
+  const shifts = currentWeekShifts();
+  document.getElementById('noteDay').textContent = dayLabel;
+  document.getElementById('noteInput').value = shifts['note|' + iso] || '';
+  document.getElementById('noteDialog').dataset.iso = iso;
+  document.getElementById('noteDialog').showModal();
+  document.getElementById('noteInput').focus();
+}
+document.getElementById('noteSave').addEventListener('click', ()=>{
+  const iso = document.getElementById('noteDialog').dataset.iso;
+  const val = sanitizeShiftText(document.getElementById('noteInput').value).slice(0, 80);
+  const wk = currentWeekShifts();
+  const key = 'note|' + iso;
+  AppState.locallyTouched.add(key);
+  captureUndoSnapshot(`editing the note for ${iso}`);
+  if(val){
+    wk[key] = val;
+    logChange(`Added a note for ${iso}: "${val}"`);
+  } else {
+    delete wk[key];
+    logChange(`Removed the note for ${iso}`);
+  }
+  document.getElementById('noteDialog').close();
+  renderOverview();
+  queueSave();
+});
+document.getElementById('noteCancel').addEventListener('click', ()=>{
+  document.getElementById('noteDialog').close();
+});
 
 // ---------- owner: assign a shift directly to any team member ----------
 function openAssignDialog(name, iso, dayLabel){
@@ -1313,6 +1520,7 @@ document.getElementById('assignSave').addEventListener('click', ()=>{
   const val = sanitizeShiftText(document.getElementById('assignInput').value);
   const wk = currentWeekShifts();
   AppState.locallyTouched.add(key);
+  captureUndoSnapshot(`assigning ${key.split('|')[1]}'s shift on ${key.split('|')[0]}`);
   if(val){
     wk[key] = val;
     logChange(`Assigned ${key.split('|')[1]} to ${val} on ${key.split('|')[0]}`);
@@ -1377,6 +1585,7 @@ function renderDays(){
         <button type="button" class="avail-opt${availVal==='no'?' on-no':''}" data-availkey="${availKey}" data-set="no">Unavailable</button>
       </div>
       ${availVal === 'yes' && !currentVal ? '<div class="avail-hint">You\u2019re marked available, but no shift time is set yet \u2014 pick one below so it shows as scheduled.</div>' : ''}
+      ${availVal === 'no' && currentVal ? '<div class="avail-hint" style="background:#FBEAE6;border-color:#E8A99A;color:#B33A2E;">You\u2019re marked unavailable, but a shift time (' + escapeHtml(currentVal) + ') is still set \u2014 clear it below, or switch back to Available.</div>' : ''}
       <div class="field-label">Shift
         <span class="dn-toggle">
           <button type="button" class="dn-btn${mode==='day'?' on':''}" data-iso="${iso}" data-mode="day">Day</button>
@@ -1414,6 +1623,7 @@ function renderDays(){
       const wk = currentWeekShifts();
       const cur = wk[availKey] || '';
       const next = cur === setTo ? '' : setTo;
+      captureUndoSnapshot('an availability change');
       if(next === ''){ delete wk[availKey]; } else { wk[availKey] = next; }
       AppState.locallyTouched.add(availKey);
       const parts = availKey.split('|');
@@ -1432,6 +1642,7 @@ function renderDays(){
       const value = btn.getAttribute('data-value');
       const wk = currentWeekShifts();
       AppState.locallyTouched.add(key);
+      captureUndoSnapshot('a shift change');
       if(wk[key] === value){
         delete wk[key];
         logChange(`Cleared shift for ${key.split('|')[1]} on ${key.split('|')[0]}`);
@@ -1463,7 +1674,10 @@ function renderDays(){
 
   // custom text input
   container.querySelectorAll('.custom-input-wrap input').forEach(inp=>{
-    inp.addEventListener('focus', ()=>{ AppState.isTyping = true; });
+    inp.addEventListener('focus', ()=>{
+      AppState.isTyping = true;
+      captureUndoSnapshot('a custom shift edit');
+    });
     inp.addEventListener('blur', ()=>{
       AppState.isTyping = false;
       const key = inp.getAttribute('data-key');
@@ -1545,7 +1759,10 @@ function renderMine(){
     return;
   }
 
-  let html = '';
+  const totalHrs = hoursForRange(start, end, activeUser);
+  let html = totalHrs > 0
+    ? `<div class="mine-hours-total">${totalHrs % 1 === 0 ? totalHrs : totalHrs.toFixed(1)}h total this ${periodMode}</div>`
+    : '';
   let lastMonthKey = '';
   entries.forEach(e=>{
     const monthKey = e.date.getFullYear() + '-' + e.date.getMonth();
@@ -1717,6 +1934,49 @@ function buildPrintMonth(){
     </table>
   `;
 }
+/** Builds a compact, wall-poster-style printable table of just the currently viewed week. */
+function buildPrintWeek(){
+  const shifts = currentWeekShifts();
+  const dayLetters = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  let rows = '';
+  for(let i=0;i<7;i++){
+    const d = addDays(weekStart, i);
+    const iso = fmtISO(d);
+    const isWeekend = i >= 5;
+    const note = shifts['note|' + iso];
+
+    const entries = staff
+      .map(name=>{
+        const time = shifts[iso + '|' + name];
+        const avail = shifts['avail|' + iso + '|' + name];
+        if(time) return `${name} (${time})`;
+        if(avail === 'no') return `${name} \u2014 unavailable`;
+        return null;
+      })
+      .filter(Boolean);
+
+    rows += `<tr class="${isWeekend ? 'pm-weekend':''}">
+      <td class="pm-date">${dayLetters[i]}<br>${d.getDate()}</td>
+      <td>${entries.length ? entries.join(', ') : '&mdash;'}${note ? `<div style="font-size:10px;color:#8A6512;margin-top:3px;">\u{1F4DD} ${escapeHtml(note)}</div>` : ''}</td>
+    </tr>`;
+  }
+
+  const end = addDays(weekStart, 6);
+  document.getElementById('printMonth').innerHTML = `
+    <h2>Echo Schedule</h2>
+    <div class="pm-sub">Week of ${monthShort(weekStart)} ${weekStart.getDate()} \u2013 ${monthShort(end)} ${end.getDate()}, ${weekStart.getFullYear()}</div>
+    <table>
+      <thead><tr><th>Day</th><th>Who's working</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+document.getElementById('printWeekBtn').addEventListener('click', ()=>{
+  buildPrintWeek();
+  setTimeout(()=> window.print(), 50);
+});
+
 document.getElementById('pdfBtn').addEventListener('click', ()=>{
   buildPrintMonth();
   setTimeout(()=> window.print(), 50);
@@ -1776,6 +2036,8 @@ document.getElementById('themeToggle').addEventListener('click', ()=>{
 });
 
 // ---------- init ----------
+document.getElementById('undoBtn').addEventListener('click', performUndo);
+
 /** App entry point: applies saved UI state, loads data, and starts background polling. */
 async function init(){
   renderWeekLabel();
