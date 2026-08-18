@@ -249,6 +249,17 @@
   .unresolved-row .ur-fix{color:#8A6512;font-weight:700;font-size:11px;}
 
   .conflicts-panel{background:#FBEAE6;border:2px solid #B33A2E;border-radius:10px;padding:10px 12px;margin-bottom:10px;box-shadow:0 2px 10px rgba(179,58,46,0.25);animation:cf-pulse 2s infinite;}
+  .available-panel{background:#EEF4EA;border:2px solid #5B8A4A;border-radius:10px;padding:10px 12px;margin-bottom:10px;box-shadow:0 2px 10px rgba(91,138,74,0.2);}
+  .available-panel .ap-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#3F6B32;margin-bottom:8px;}
+  .avail-req-row{background:var(--card);border:1px solid #A8C99A;border-radius:8px;padding:8px;margin-bottom:6px;}
+  .avail-req-row:last-child{margin-bottom:0;}
+  .avail-req-info{font-size:11px;margin-bottom:6px;}
+  .avail-req-actions{display:flex;gap:5px;flex-wrap:wrap;}
+  .avail-req-btn{flex:0 0 auto;padding:6px 9px;border-radius:12px;border:1px solid #5B8A4A;background:#EEF4EA;color:#3F6B32;font-size:10px;font-weight:700;cursor:pointer;}
+  .avail-req-more{flex:0 0 auto;padding:6px 10px;border-radius:12px;border:1px solid var(--line);background:var(--cream);color:var(--ink-soft);font-size:10px;font-weight:700;cursor:pointer;}
+  body.dark-mode .available-panel{background:#1E301F;border-color:#4A7A3E;}
+  body.dark-mode .avail-req-row{border-color:#3E5C34;}
+  body.dark-mode .avail-req-btn{background:#22301F;border-color:#5A7A4E;color:#8FBF80;}
   @keyframes cf-pulse{
     0%,100%{box-shadow:0 2px 10px rgba(179,58,46,0.25);}
     50%{box-shadow:0 2px 18px rgba(179,58,46,0.55);}
@@ -361,8 +372,9 @@
   </div>
 
   <div id="ownerView" style="display:none;">
-    <div id="unresolvedPanel" style="display:none;"></div>
-    <div id="conflictsPanel" style="display:none;"></div>
+    <div id="availablePanel" class="available-panel" style="display:none;"></div>
+    <div id="unresolvedPanel" class="unresolved-panel" style="display:none;"></div>
+    <div id="conflictsPanel" class="conflicts-panel" style="display:none;"></div>
     <div class="jump-date-row">
       <label for="jumpDateInput">Jump to a week:</label>
       <input type="date" id="jumpDateInput">
@@ -1339,6 +1351,92 @@ function findConflicts(){
   return results;
 }
 
+/**
+ * Finds everyone who marked themselves Available but doesn't have an actual
+ * shift time assigned yet \u2014 these are the people an owner needs to act on.
+ * Looks 21 days ahead, same window as conflicts.
+ */
+function findAvailableNoShift(){
+  const todayISO = fmtISO(new Date());
+  const cutoffISO = fmtISO(addDays(new Date(), 21));
+  const results = [];
+  Object.keys(allWeeks).forEach(weekKey=>{
+    const wk = allWeeks[weekKey];
+    Object.keys(wk).forEach(k=>{
+      if(!k.startsWith('avail|')) return;
+      if(wk[k] !== 'yes') return;
+      const parts = k.split('|'); // ['avail', iso, name]
+      const iso = parts[1], name = parts[2];
+      const time = wk[iso + '|' + name];
+      if(!time && iso >= todayISO && iso <= cutoffISO){
+        results.push({ iso, name });
+      }
+    });
+  });
+  results.sort((a,b)=> a.iso < b.iso ? -1 : 1);
+  return results;
+}
+
+/** Shows a green panel of "available, needs a shift" people with one-tap assign buttons. */
+function renderAvailablePanel(){
+  const panel = document.getElementById('availablePanel');
+  const items = findAvailableNoShift();
+  if(items.length === 0){
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+  const quickOnes = [NIGHT_OPTIONS[0], DAY_OPTIONS[0]]; // one night + one day preset, for true one-tap assign
+  const rows = items.map((item, idx)=>{
+    const d = parseISODateLocal(item.iso);
+    const dLabel = `${WEEKDAY_SHORT[(d.getDay()+6)%7].charAt(0).toUpperCase()+WEEKDAY_SHORT[(d.getDay()+6)%7].slice(1)} ${d.getDate()} ${monthShort(d)}`;
+    const key = item.iso + '|' + item.name;
+    return `<div class="avail-req-row">
+      <div class="avail-req-info" data-name="${escapeHtml(item.name)}" data-iso="${item.iso}" data-day="${escapeHtml(dLabel)}">
+        <span class="ur-name">${escapeHtml(item.name)}</span> <span class="ur-date">\u00b7 ${dLabel}</span>
+      </div>
+      <div class="avail-req-actions">
+        ${quickOnes.map(opt => `<button type="button" class="avail-req-btn" data-key="${key}" data-value="${escapeHtml(opt.value)}">${opt.label}</button>`).join('')}
+        <button type="button" class="avail-req-more" data-name="${escapeHtml(item.name)}" data-iso="${item.iso}" data-day="${escapeHtml(dLabel)}">\u2026</button>
+      </div>
+    </div>`;
+  }).join('');
+  panel.innerHTML = `
+    <div class="ap-title">&#9989; Available, needs a shift (${items.length})</div>
+    ${rows}
+  `;
+  panel.style.display = 'block';
+
+  panel.querySelectorAll('.avail-req-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.getAttribute('data-key');
+      const value = btn.getAttribute('data-value');
+      assignShiftDirect(key, value);
+    });
+  });
+  panel.querySelectorAll('.avail-req-more').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      openAssignDialog(btn.getAttribute('data-name'), btn.getAttribute('data-iso'), btn.getAttribute('data-day'));
+    });
+  });
+}
+
+/** Directly assigns a shift value to a key ("iso|name") without opening the dialog \u2014 used for one-tap panel actions. */
+function assignShiftDirect(key, value){
+  const [iso, name] = [key.split('|')[0], key.split('|')[1]];
+  const wkKey = fmtISO(getMonday(parseISODateLocal(iso)));
+  if(!allWeeks[wkKey]) allWeeks[wkKey] = {};
+  const wk = allWeeks[wkKey];
+  AppState.locallyTouched.add(key);
+  captureUndoSnapshot(`assigning ${name}'s shift on ${iso}`);
+  wk[key] = value;
+  logChange(`Assigned ${name} to ${value} on ${iso}`);
+  renderOverview();
+  renderTodayStrip();
+  renderLiveBanner();
+  queueSave();
+}
+
 function renderUnresolvedPanel(){
   const panel = document.getElementById('unresolvedPanel');
   const items = findUnresolvedClosings();
@@ -1402,8 +1500,9 @@ function renderConflictsPanel(){
  * days nobody is scheduled on.
  */
 function renderOverview(){
-  renderUnresolvedPanel();
+  renderAvailablePanel();
   renderConflictsPanel();
+  renderUnresolvedPanel();
   renderOvFilterBar();
   const wrap = document.getElementById('ovTableWrap');
   const now = new Date();
