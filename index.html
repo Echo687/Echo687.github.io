@@ -106,14 +106,16 @@
   .hours-day-card .hd-ddate{font-size:11px;color:var(--ink-soft);}
   .hours-day-card .hd-scheduled{padding:8px 12px 0;font-size:11px;color:var(--ink-soft);}
   .hours-day-card .hd-body{padding:10px 12px;}
-  .hours-day-card .hd-time-row{display:flex;align-items:center;gap:8px;}
-  .hours-day-card .hd-digit{flex:1;text-align:center;letter-spacing:0.1em;font-variant-numeric:tabular-nums;border:1px solid var(--line);border-radius:8px;padding:11px 4px;font-size:16px;font-weight:700;font-family:inherit;background:#fff;color:var(--ink);}
-  .hours-day-card .hd-digit.filled{border-color:#9CB98F;background:#F4FAF1;color:#3F6B32;}
-  .hours-day-card .hd-to{font-size:11px;color:var(--ink-soft);font-weight:700;flex:0 0 auto;}
-  .hours-day-card .hd-format-hint{font-size:10px;color:var(--ink-soft);margin-top:5px;text-align:center;}
+  .hours-day-card .hd-time-row{display:flex;align-items:flex-end;gap:8px;}
+  .hours-day-card .hd-time-col{flex:1;display:flex;flex-direction:column;gap:4px;}
+  .hours-day-card .hd-time-label{font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-soft);font-weight:700;padding-left:2px;}
+  .hours-day-card .hd-time{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 8px;font-size:15px;font-weight:700;font-family:inherit;background:#fff;color:var(--ink);}
+  .hours-day-card .hd-time.filled{border-color:#9CB98F;background:#F4FAF1;color:#3F6B32;}
+  .hours-day-card .hd-to{font-size:11px;color:var(--ink-soft);font-weight:700;flex:0 0 auto;padding-bottom:11px;}
   .hours-day-card .hd-future-note{padding:10px 12px;font-size:11px;color:var(--ink-soft);font-style:italic;}
-  body.dark-mode .hours-day-card .hd-digit{background:#2B2620;color:var(--ink);}
-  body.dark-mode .hours-day-card .hd-digit.filled{background:#22301F;border-color:#5A7A4E;color:#8FBF80;}
+  body.dark-mode .hours-day-card .hd-time{background:#2B2620;color:var(--ink);}
+  body.dark-mode .hours-day-card .hd-time.filled{background:#22301F;border-color:#5A7A4E;color:#8FBF80;}
+  body.dark-mode .hours-day-card .hd-time::-webkit-calendar-picker-indicator{filter:invert(1);}
 
   .payroll-panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:14px;}
   .payroll-panel .pp-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);margin-bottom:8px;}
@@ -1795,30 +1797,27 @@ document.getElementById('assignCancel').addEventListener('click', ()=>{
  * since actual hours can differ from what was planned.
  */
 /** Splits a stored "HH:MM-HH:MM" value into two 4-digit strings ("1900", "0100") for the numeric inputs. */
-function timeRangeToDigits(val){
+/** Splits a stored "HH:MM-HH:MM" value into its two "HH:MM" parts, for pre-filling native time inputs. */
+function timeRangeToParts(val){
   if(!val) return { start: '', end: '' };
   const parts = val.split(/-|\u2013|\u2014/).map(s=>s.trim());
   if(parts.length !== 2) return { start: '', end: '' };
-  const toDigits = (t)=> t.replace(':', '').replace(/[^0-9]/g, '');
-  const s = toDigits(parts[0]), e = toDigits(parts[1]);
-  return { start: /^\d{3,4}$/.test(s) ? s.padStart(4,'0') : '', end: /^\d{3,4}$/.test(e) ? e.padStart(4,'0') : '' };
-}
-/** Combines two 4-digit strings into a "HH:MM-HH:MM" range, or null if either isn't a complete, valid 4-digit time. */
-function digitsToTimeRange(startDigits, endDigits){
-  if(!/^\d{4}$/.test(startDigits) || !/^\d{4}$/.test(endDigits)) return null;
-  const fmt = (d)=> `${d.slice(0,2)}:${d.slice(2)}`;
-  const sh = parseInt(startDigits.slice(0,2),10), sm = parseInt(startDigits.slice(2),10);
-  const eh = parseInt(endDigits.slice(0,2),10), em = parseInt(endDigits.slice(2),10);
-  if(sh > 23 || sm > 59 || eh > 23 || em > 59) return null;
-  return `${fmt(startDigits)}-${fmt(endDigits)}`;
+  const isValid = (t)=> /^\d{1,2}:\d{2}$/.test(t);
+  const norm = (t)=>{
+    if(!isValid(t)) return '';
+    const [h,m] = t.split(':');
+    return h.padStart(2,'0') + ':' + m;
+  };
+  return { start: norm(parts[0]), end: norm(parts[1]) };
 }
 
 /**
  * Renders the "Hours" tab: lets the active user log the hours they actually
  * worked for each day of the currently viewed week (up to and including
- * today \u2014 future days aren't loggable yet). Uses two 4-digit numeric fields
- * per day (e.g. 1900 / 0100) so entry is fast on a phone's numeric keypad,
- * with no colons or dashes to type.
+ * today \u2014 future days aren't loggable yet). Uses the browser's native time
+ * picker (a proper clock/scroll wheel on mobile) for both start and end, so
+ * there's no manual digit typing, no custom parsing, and no risk of display
+ * glitches \u2014 the browser owns rendering and validation entirely.
  */
 function renderHours(){
   const list = document.getElementById('hoursList');
@@ -1846,7 +1845,7 @@ function renderHours(){
     const scheduledVal = shifts[iso + '|' + name] || '';
     const actualKey = 'actual|' + iso + '|' + name;
     const actualVal = shifts[actualKey] || '';
-    const { start, end } = timeRangeToDigits(actualVal);
+    const { start, end } = timeRangeToParts(actualVal);
 
     const card = document.createElement('div');
     card.className = 'hours-day-card' + (isFuture ? ' future' : '');
@@ -1862,11 +1861,16 @@ function renderHours(){
         ${scheduledVal ? `<div class="hd-scheduled">Scheduled: <b>${escapeHtml(scheduledVal)}</b></div>` : ''}
         <div class="hd-body">
           <div class="hd-time-row">
-            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="hd-digit${start?' filled':''}" data-actualkey="${actualKey}" data-part="start" placeholder="1900" value="${escapeHtml(start)}">
+            <div class="hd-time-col">
+              <label class="hd-time-label">Start</label>
+              <input type="time" class="hd-time${start?' filled':''}" data-actualkey="${actualKey}" data-part="start" value="${start}">
+            </div>
             <span class="hd-to">to</span>
-            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="hd-digit${end?' filled':''}" data-actualkey="${actualKey}" data-part="end" placeholder="0100" value="${escapeHtml(end)}">
+            <div class="hd-time-col">
+              <label class="hd-time-label">End</label>
+              <input type="time" class="hd-time${end?' filled':''}" data-actualkey="${actualKey}" data-part="end" value="${end}">
+            </div>
           </div>
-          <div class="hd-format-hint">24h, no colon \u2014 e.g. 1900 = 19:00</div>
         </div>
       `;
     }
@@ -1876,10 +1880,12 @@ function renderHours(){
   function combineAndSave(actualKey, card){
     const startInp = card.querySelector('input[data-part="start"]');
     const endInp = card.querySelector('input[data-part="end"]');
-    const combined = digitsToTimeRange(startInp.value, endInp.value);
+    const startVal = startInp.value; // native time input already gives "HH:MM" or ""
+    const endVal = endInp.value;
     const wk = currentWeekShifts();
 
-    if(combined){
+    if(startVal && endVal){
+      const combined = `${startVal}-${endVal}`;
       AppState.locallyTouched.add(actualKey);
       wk[actualKey] = combined;
       startInp.classList.add('filled');
@@ -1887,10 +1893,8 @@ function renderHours(){
       logChange(`Logged ${actualKey.split('|')[2]}'s actual hours as "${combined}" for ${actualKey.split('|')[1]}`);
       updateHoursTotal();
       queueSave();
-    } else if(startInp.value === '' && endInp.value === ''){
-      // Only clear the saved entry when the person has explicitly emptied
-      // both fields \u2014 never as a side effect of one field being mid-typing
-      // (e.g. right after auto-advancing focus to the other field).
+    } else if(startVal === '' && endVal === ''){
+      // Only clear the saved entry when both fields are explicitly emptied.
       AppState.locallyTouched.add(actualKey);
       delete wk[actualKey];
       startInp.classList.remove('filled');
@@ -1898,26 +1902,12 @@ function renderHours(){
       updateHoursTotal();
       queueSave();
     }
-    // Otherwise (one field mid-typing, the other still holding a previously
-    // saved digit) \u2014 leave whatever's already stored alone. Nothing to do.
+    // Otherwise (one field set, the other still empty while mid-edit) \u2014
+    // leave whatever's already saved alone until both are filled in.
   }
 
-  list.querySelectorAll('input.hd-digit').forEach(inp=>{
-    inp.addEventListener('focus', ()=>{ AppState.isTyping = true; });
-    inp.addEventListener('input', ()=>{
-      inp.value = inp.value.replace(/[^0-9]/g, '').slice(0,4);
-      const card = inp.closest('.hours-day-card');
-      const actualKey = inp.getAttribute('data-actualkey');
-      // Save the moment both fields are complete \u2014 don't wait for blur.
-      combineAndSave(actualKey, card);
-      // auto-advance from start to end field once 4 digits are typed
-      if(inp.value.length === 4 && inp.getAttribute('data-part') === 'start'){
-        const endInp = card.querySelector('input[data-part="end"]');
-        if(endInp && !endInp.value) endInp.focus();
-      }
-    });
-    inp.addEventListener('blur', ()=>{
-      AppState.isTyping = false;
+  list.querySelectorAll('input.hd-time').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
       const actualKey = inp.getAttribute('data-actualkey');
       const card = inp.closest('.hours-day-card');
       combineAndSave(actualKey, card);
