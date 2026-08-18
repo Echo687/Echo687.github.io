@@ -112,6 +112,7 @@
   .hours-day-card .hd-time{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 8px;font-size:15px;font-weight:700;font-family:inherit;background:#fff;color:var(--ink);}
   .hours-day-card .hd-time.filled{border-color:#9CB98F;background:#F4FAF1;color:#3F6B32;}
   .hours-day-card .hd-to{font-size:11px;color:var(--ink-soft);font-weight:700;flex:0 0 auto;padding-bottom:11px;}
+  .hours-day-card .hd-clear-btn{margin-top:8px;width:100%;padding:7px;border-radius:7px;border:1px solid var(--accent-soft);background:none;color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;}
   .hours-day-card .hd-future-note{padding:10px 12px;font-size:11px;color:var(--ink-soft);font-style:italic;}
   body.dark-mode .hours-day-card .hd-time{background:#2B2620;color:var(--ink);}
   body.dark-mode .hours-day-card .hd-time.filled{background:#22301F;border-color:#5A7A4E;color:#8FBF80;}
@@ -1871,6 +1872,7 @@ function renderHours(){
               <input type="time" class="hd-time${end?' filled':''}" data-actualkey="${actualKey}" data-part="end" value="${end}">
             </div>
           </div>
+          <button type="button" class="hd-clear-btn" data-actualkey="${actualKey}" style="display:${actualVal ? 'block':'none'};">Clear</button>
         </div>
       `;
     }
@@ -1883,6 +1885,7 @@ function renderHours(){
     const startVal = startInp.value; // native time input already gives "HH:MM" or ""
     const endVal = endInp.value;
     const wk = currentWeekShifts();
+    const clearBtn = card.querySelector('.hd-clear-btn');
 
     if(startVal && endVal){
       const combined = `${startVal}-${endVal}`;
@@ -1890,6 +1893,7 @@ function renderHours(){
       wk[actualKey] = combined;
       startInp.classList.add('filled');
       endInp.classList.add('filled');
+      if(clearBtn) clearBtn.style.display = 'block';
       logChange(`Logged ${actualKey.split('|')[2]}'s actual hours as "${combined}" for ${actualKey.split('|')[1]}`);
       updateHoursTotal();
       queueSave();
@@ -1899,6 +1903,7 @@ function renderHours(){
       delete wk[actualKey];
       startInp.classList.remove('filled');
       endInp.classList.remove('filled');
+      if(clearBtn) clearBtn.style.display = 'none';
       updateHoursTotal();
       queueSave();
     }
@@ -1911,6 +1916,28 @@ function renderHours(){
       const actualKey = inp.getAttribute('data-actualkey');
       const card = inp.closest('.hours-day-card');
       combineAndSave(actualKey, card);
+    });
+  });
+
+  // Explicit Clear button \u2014 native time inputs don't reliably expose an
+  // obvious way to reset to empty on every phone, so this covers all devices.
+  list.querySelectorAll('.hd-clear-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const actualKey = btn.getAttribute('data-actualkey');
+      const card = btn.closest('.hours-day-card');
+      const startInp = card.querySelector('input[data-part="start"]');
+      const endInp = card.querySelector('input[data-part="end"]');
+      const wk = currentWeekShifts();
+      AppState.locallyTouched.add(actualKey);
+      delete wk[actualKey];
+      startInp.value = '';
+      endInp.value = '';
+      startInp.classList.remove('filled');
+      endInp.classList.remove('filled');
+      btn.style.display = 'none';
+      logChange(`Cleared ${actualKey.split('|')[2]}'s logged hours for ${actualKey.split('|')[1]}`);
+      updateHoursTotal();
+      queueSave();
     });
   });
 }
