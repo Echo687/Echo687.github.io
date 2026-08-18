@@ -436,6 +436,9 @@
       <button id="manageTeamBtn" style="width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:13px;font-weight:700;cursor:pointer;">&#128101; Manage team</button>
     </div>
     <div id="payrollPanel" style="display:none;"></div>
+    <div id="payrollExportWrap" style="display:none;padding:0 0 14px;">
+      <button id="exportHoursCsvBtn" class="util-btn" style="width:100%;">&#8681; Download logged hours (.csv)</button>
+    </div>
     <div id="overviewDays">
       <div class="ov-filterbar" id="ovFilterBar"></div>
       <div id="ovTableWrap"></div>
@@ -1590,6 +1593,7 @@ function renderConflictsPanel(){
 /** Shows each team member's actual logged hours for the currently viewed week \u2014 for payroll/admin reference. */
 function renderPayrollPanel(){
   const panel = document.getElementById('payrollPanel');
+  const exportWrap = document.getElementById('payrollExportWrap');
   const weekEnd = addDays(weekStart, 6);
   const rows = staff
     .map(name => ({ name, hrs: actualHoursForRange(weekStart, weekEnd, name) }))
@@ -1598,6 +1602,7 @@ function renderPayrollPanel(){
   if(rows.length === 0){
     panel.style.display = 'none';
     panel.innerHTML = '';
+    exportWrap.style.display = 'none';
     return;
   }
 
@@ -1607,6 +1612,7 @@ function renderPayrollPanel(){
 
   panel.innerHTML = `<div class="pp-title">&#128176; Logged hours this week</div>${rowsHtml}`;
   panel.style.display = 'block';
+  exportWrap.style.display = 'block';
 }
 
 function renderOverview(){
@@ -1872,28 +1878,40 @@ function renderHours(){
     const endInp = card.querySelector('input[data-part="end"]');
     const combined = digitsToTimeRange(startInp.value, endInp.value);
     const wk = currentWeekShifts();
-    AppState.locallyTouched.add(actualKey);
+
     if(combined){
+      AppState.locallyTouched.add(actualKey);
       wk[actualKey] = combined;
       startInp.classList.add('filled');
       endInp.classList.add('filled');
       logChange(`Logged ${actualKey.split('|')[2]}'s actual hours as "${combined}" for ${actualKey.split('|')[1]}`);
-    } else {
+      updateHoursTotal();
+      queueSave();
+    } else if(startInp.value === '' && endInp.value === ''){
+      // Only clear the saved entry when the person has explicitly emptied
+      // both fields \u2014 never as a side effect of one field being mid-typing
+      // (e.g. right after auto-advancing focus to the other field).
+      AppState.locallyTouched.add(actualKey);
       delete wk[actualKey];
-      if(!startInp.value) startInp.classList.remove('filled');
-      if(!endInp.value) endInp.classList.remove('filled');
+      startInp.classList.remove('filled');
+      endInp.classList.remove('filled');
+      updateHoursTotal();
+      queueSave();
     }
-    updateHoursTotal();
-    queueSave();
+    // Otherwise (one field mid-typing, the other still holding a previously
+    // saved digit) \u2014 leave whatever's already stored alone. Nothing to do.
   }
 
   list.querySelectorAll('input.hd-digit').forEach(inp=>{
     inp.addEventListener('focus', ()=>{ AppState.isTyping = true; });
     inp.addEventListener('input', ()=>{
       inp.value = inp.value.replace(/[^0-9]/g, '').slice(0,4);
+      const card = inp.closest('.hours-day-card');
+      const actualKey = inp.getAttribute('data-actualkey');
+      // Save the moment both fields are complete \u2014 don't wait for blur.
+      combineAndSave(actualKey, card);
       // auto-advance from start to end field once 4 digits are typed
       if(inp.value.length === 4 && inp.getAttribute('data-part') === 'start'){
-        const card = inp.closest('.hours-day-card');
         const endInp = card.querySelector('input[data-part="end"]');
         if(endInp && !endInp.value) endInp.focus();
       }
@@ -2320,6 +2338,41 @@ document.getElementById('backupBtn').addEventListener('click', ()=>{
   const a = document.createElement('a');
   a.href = url;
   a.download = `echo-schedule-backup-${fmtISO(new Date())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+/** Escapes a value for safe inclusion in a CSV cell (wraps in quotes, doubles any internal quotes). */
+function csvCell(val){
+  return `"${String(val).replace(/"/g, '""')}"`;
+}
+
+document.getElementById('exportHoursCsvBtn').addEventListener('click', ()=>{
+  const shifts = currentWeekShifts();
+  const rows = [['Date', 'Day', 'Name', 'Scheduled', 'Logged', 'Hours']];
+
+  for(let i=0;i<7;i++){
+    const d = addDays(weekStart, i);
+    const iso = fmtISO(d);
+    staff.forEach(name=>{
+      const scheduled = shifts[iso + '|' + name] || '';
+      const actual = shifts['actual|' + iso + '|' + name] || '';
+      if(!scheduled && !actual) return; // skip rows with nothing to report
+      const r = parseTimeRange(actual);
+      const hrs = r ? (r.durationMin / 60) : '';
+      rows.push([iso, DAY_NAMES[i], name, scheduled, actual, hrs === '' ? '' : (hrs % 1 === 0 ? hrs : hrs.toFixed(2))]);
+    });
+  }
+
+  const csv = rows.map(row => row.map(csvCell).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }); // BOM so Excel opens accents/special chars correctly
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const end = addDays(weekStart, 6);
+  a.download = `echo-hours-${fmtISO(weekStart)}-to-${fmtISO(end)}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
