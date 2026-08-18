@@ -2238,6 +2238,7 @@ function goToWeek(newStart){
   if(viewMode === 'owner') renderOverview();
   else if(viewMode === 'edit') renderDays();
   else if(viewMode === 'mine') renderMine();
+  else if(viewMode === 'hours') renderHours();
 }
 document.getElementById('prevWeek').addEventListener('click', ()=> goToWeek(addDays(weekStart,-7)));
 document.getElementById('nextWeek').addEventListener('click', ()=> goToWeek(addDays(weekStart,7)));
@@ -2396,7 +2397,7 @@ document.getElementById('exportHoursCsvBtn').addEventListener('click', ()=>{
   // Dutch-locale Excel, which otherwise misreads comma-decimal numbers if the
   // file uses comma as the field separator too.
   const csv = rows.map(row => row.map(csvCell).join(';')).join('\r\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }); // BOM so Excel opens accents/special chars correctly
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
