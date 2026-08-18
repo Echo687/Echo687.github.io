@@ -98,6 +98,30 @@
   .avail-hint{margin:0 11px 4px;padding:6px 9px;background:#FFF3E0;border:1px solid #E8C88A;border-radius:7px;font-size:10px;color:#8A6512;line-height:1.35;}
   .scheduled-badge{margin:0 11px 6px;padding:8px 10px;background:#EEF4EA;border:1px solid #9CB98F;border-radius:8px;font-size:12px;color:#3F6B32;}
   body.dark-mode .scheduled-badge{background:#22301F;border-color:#5A7A4E;color:#8FBF80;}
+
+  .hours-day-card{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden;box-shadow:0 1px 3px rgba(36,31,25,0.04);}
+  .hours-day-card.future{opacity:0.5;}
+  .hours-day-card .hd-head{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px dashed var(--line);}
+  .hours-day-card .hd-dname{font-weight:700;font-size:13px;}
+  .hours-day-card .hd-ddate{font-size:11px;color:var(--ink-soft);}
+  .hours-day-card .hd-scheduled{padding:8px 12px 0;font-size:11px;color:var(--ink-soft);}
+  .hours-day-card .hd-body{padding:10px 12px;}
+  .hours-day-card .hd-time-row{display:flex;align-items:center;gap:8px;}
+  .hours-day-card .hd-digit{flex:1;text-align:center;letter-spacing:0.1em;font-variant-numeric:tabular-nums;border:1px solid var(--line);border-radius:8px;padding:11px 4px;font-size:16px;font-weight:700;font-family:inherit;background:#fff;color:var(--ink);}
+  .hours-day-card .hd-digit.filled{border-color:#9CB98F;background:#F4FAF1;color:#3F6B32;}
+  .hours-day-card .hd-to{font-size:11px;color:var(--ink-soft);font-weight:700;flex:0 0 auto;}
+  .hours-day-card .hd-format-hint{font-size:10px;color:var(--ink-soft);margin-top:5px;text-align:center;}
+  .hours-day-card .hd-future-note{padding:10px 12px;font-size:11px;color:var(--ink-soft);font-style:italic;}
+  body.dark-mode .hours-day-card .hd-digit{background:#2B2620;color:var(--ink);}
+  body.dark-mode .hours-day-card .hd-digit.filled{background:#22301F;border-color:#5A7A4E;color:#8FBF80;}
+
+  .payroll-panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:14px;}
+  .payroll-panel .pp-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);margin-bottom:8px;}
+  .payroll-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .payroll-row:last-child{border-bottom:none;}
+  .payroll-row .pr-name{font-weight:600;}
+  .payroll-row .pr-hrs{font-weight:800;color:var(--accent);}
+  .payroll-empty{font-size:12px;color:var(--ink-soft);font-style:italic;}
   .shift-value{padding:0 14px 4px;font-size:12px;color:var(--ink-soft);}
   .shift-value b{color:var(--ink);font-weight:700;}
   .custom-input-wrap{padding:2px 11px 9px;}
@@ -169,8 +193,8 @@
 
   .ov-hours{display:block;font-size:10px;font-weight:500;color:var(--ink-soft);margin-top:1px;}
 
-  .viewtabs{display:flex;gap:5px;padding:10px 10px 0;}
-  .viewtabs button{flex:1;padding:12px 8px;min-height:44px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:12px;font-weight:700;cursor:pointer;}
+  .viewtabs{display:flex;gap:4px;padding:10px 10px 0;}
+  .viewtabs button{flex:1;padding:11px 4px;min-height:44px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
   .viewtabs button.active{background:var(--ink);color:#fff;border-color:var(--ink);}
 
   .pdf-btn-wrap{padding:6px 10px 0;}
@@ -366,6 +390,7 @@
 <div class="viewtabs">
   <button id="tabEdit" class="active">Fill in</button>
   <button id="tabMine">My Schedule</button>
+  <button id="tabHours">Hours</button>
   <button id="tabOwner">&#128274; Owner</button>
 </div>
 
@@ -394,6 +419,11 @@
     <div id="mineList"></div>
   </div>
 
+  <div id="hoursView" style="display:none;">
+    <div id="hoursTotal" class="mine-hours-total" style="display:none;"></div>
+    <div id="hoursList"></div>
+  </div>
+
   <div id="ownerView" style="display:none;">
     <div id="availablePanel" class="available-panel" style="display:none;"></div>
     <div id="unresolvedPanel" class="unresolved-panel" style="display:none;"></div>
@@ -405,6 +435,7 @@
     <div id="teamBarWrap" style="padding:0 0 12px;">
       <button id="manageTeamBtn" style="width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:13px;font-weight:700;cursor:pointer;">&#128101; Manage team</button>
     </div>
+    <div id="payrollPanel" style="display:none;"></div>
     <div id="overviewDays">
       <div class="ov-filterbar" id="ovFilterBar"></div>
       <div id="ovTableWrap"></div>
@@ -1050,6 +1081,20 @@ function hoursForRange(start, end, name){
   return totalMin / 60;
 }
 
+/** Total ACTUAL (self-logged) hours for `name` between two dates \u2014 what people log in the Hours tab, not the plan. */
+function actualHoursForRange(start, end, name){
+  let totalMin = 0;
+  let cursor = new Date(start);
+  while(cursor <= end){
+    const iso = fmtISO(cursor);
+    const wk = shiftsForDate(iso);
+    const r = parseTimeRange(wk['actual|' + iso + '|' + name]);
+    if(r) totalMin += r.durationMin;
+    cursor = addDays(cursor, 1);
+  }
+  return totalMin / 60;
+}
+
 function renderLiveBanner(){
   const banner = document.getElementById('liveBanner');
   if(!ownerUnlocked){
@@ -1542,10 +1587,33 @@ function renderConflictsPanel(){
  * one column per day, plus a coverage-summary row and gap highlighting for
  * days nobody is scheduled on.
  */
+/** Shows each team member's actual logged hours for the currently viewed week \u2014 for payroll/admin reference. */
+function renderPayrollPanel(){
+  const panel = document.getElementById('payrollPanel');
+  const weekEnd = addDays(weekStart, 6);
+  const rows = staff
+    .map(name => ({ name, hrs: actualHoursForRange(weekStart, weekEnd, name) }))
+    .filter(r => r.hrs > 0);
+
+  if(rows.length === 0){
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+
+  const rowsHtml = rows.map(r =>
+    `<div class="payroll-row"><span class="pr-name">${escapeHtml(r.name)}</span><span class="pr-hrs">${r.hrs % 1 === 0 ? r.hrs : r.hrs.toFixed(1)}h</span></div>`
+  ).join('');
+
+  panel.innerHTML = `<div class="pp-title">&#128176; Logged hours this week</div>${rowsHtml}`;
+  panel.style.display = 'block';
+}
+
 function renderOverview(){
   renderAvailablePanel();
   renderConflictsPanel();
   renderUnresolvedPanel();
+  renderPayrollPanel();
   renderOvFilterBar();
   const wrap = document.getElementById('ovTableWrap');
   const now = new Date();
@@ -1714,6 +1782,145 @@ document.getElementById('assignCancel').addEventListener('click', ()=>{
  * the actual time via the Owner tab, based on who's available and what they
  * noted. If a shift has already been assigned, it's shown read-only here.
  */
+/**
+ * Renders the "Hours" tab: lets the active user log the hours they actually
+ * worked for each day of the currently viewed week (up to and including
+ * today \u2014 future days aren't loggable yet). Separate from the schedule,
+ * since actual hours can differ from what was planned.
+ */
+/** Splits a stored "HH:MM-HH:MM" value into two 4-digit strings ("1900", "0100") for the numeric inputs. */
+function timeRangeToDigits(val){
+  if(!val) return { start: '', end: '' };
+  const parts = val.split(/-|\u2013|\u2014/).map(s=>s.trim());
+  if(parts.length !== 2) return { start: '', end: '' };
+  const toDigits = (t)=> t.replace(':', '').replace(/[^0-9]/g, '');
+  const s = toDigits(parts[0]), e = toDigits(parts[1]);
+  return { start: /^\d{3,4}$/.test(s) ? s.padStart(4,'0') : '', end: /^\d{3,4}$/.test(e) ? e.padStart(4,'0') : '' };
+}
+/** Combines two 4-digit strings into a "HH:MM-HH:MM" range, or null if either isn't a complete, valid 4-digit time. */
+function digitsToTimeRange(startDigits, endDigits){
+  if(!/^\d{4}$/.test(startDigits) || !/^\d{4}$/.test(endDigits)) return null;
+  const fmt = (d)=> `${d.slice(0,2)}:${d.slice(2)}`;
+  const sh = parseInt(startDigits.slice(0,2),10), sm = parseInt(startDigits.slice(2),10);
+  const eh = parseInt(endDigits.slice(0,2),10), em = parseInt(endDigits.slice(2),10);
+  if(sh > 23 || sm > 59 || eh > 23 || em > 59) return null;
+  return `${fmt(startDigits)}-${fmt(endDigits)}`;
+}
+
+/**
+ * Renders the "Hours" tab: lets the active user log the hours they actually
+ * worked for each day of the currently viewed week (up to and including
+ * today \u2014 future days aren't loggable yet). Uses two 4-digit numeric fields
+ * per day (e.g. 1900 / 0100) so entry is fast on a phone's numeric keypad,
+ * with no colons or dashes to type.
+ */
+function renderHours(){
+  const list = document.getElementById('hoursList');
+  const totalEl = document.getElementById('hoursTotal');
+  list.innerHTML = '';
+
+  if(!activeUser){
+    list.innerHTML = `<div class="mine-prompt">Choose your name to log your hours.<br><button id="hoursPickBtn">Choose name</button></div>`;
+    document.getElementById('hoursPickBtn').addEventListener('click', openWhoDialog);
+    totalEl.style.display = 'none';
+    return;
+  }
+
+  const todayISO = fmtISO(new Date());
+  const shifts = currentWeekShifts();
+  const name = activeUser;
+
+  updateHoursTotal();
+
+  for(let i=0;i<7;i++){
+    const d = addDays(weekStart, i);
+    const iso = fmtISO(d);
+    const isFuture = iso > todayISO;
+    const isToday = iso === todayISO;
+    const scheduledVal = shifts[iso + '|' + name] || '';
+    const actualKey = 'actual|' + iso + '|' + name;
+    const actualVal = shifts[actualKey] || '';
+    const { start, end } = timeRangeToDigits(actualVal);
+
+    const card = document.createElement('div');
+    card.className = 'hours-day-card' + (isFuture ? ' future' : '');
+
+    if(isFuture){
+      card.innerHTML = `
+        <div class="hd-head${isToday ? ' today' : ''}"><span class="hd-dname">${DAY_NAMES[i]}</span><span class="hd-ddate">${d.getDate()} ${monthShort(d)}</span></div>
+        <div class="hd-future-note">This day hasn\u2019t happened yet.</div>
+      `;
+    } else {
+      card.innerHTML = `
+        <div class="hd-head${isToday ? ' today' : ''}"><span class="hd-dname">${DAY_NAMES[i]}</span><span class="hd-ddate">${d.getDate()} ${monthShort(d)}</span></div>
+        ${scheduledVal ? `<div class="hd-scheduled">Scheduled: <b>${escapeHtml(scheduledVal)}</b></div>` : ''}
+        <div class="hd-body">
+          <div class="hd-time-row">
+            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="hd-digit${start?' filled':''}" data-actualkey="${actualKey}" data-part="start" placeholder="1900" value="${escapeHtml(start)}">
+            <span class="hd-to">to</span>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="hd-digit${end?' filled':''}" data-actualkey="${actualKey}" data-part="end" placeholder="0100" value="${escapeHtml(end)}">
+          </div>
+          <div class="hd-format-hint">24h, no colon \u2014 e.g. 1900 = 19:00</div>
+        </div>
+      `;
+    }
+    list.appendChild(card);
+  }
+
+  function combineAndSave(actualKey, card){
+    const startInp = card.querySelector('input[data-part="start"]');
+    const endInp = card.querySelector('input[data-part="end"]');
+    const combined = digitsToTimeRange(startInp.value, endInp.value);
+    const wk = currentWeekShifts();
+    AppState.locallyTouched.add(actualKey);
+    if(combined){
+      wk[actualKey] = combined;
+      startInp.classList.add('filled');
+      endInp.classList.add('filled');
+      logChange(`Logged ${actualKey.split('|')[2]}'s actual hours as "${combined}" for ${actualKey.split('|')[1]}`);
+    } else {
+      delete wk[actualKey];
+      if(!startInp.value) startInp.classList.remove('filled');
+      if(!endInp.value) endInp.classList.remove('filled');
+    }
+    updateHoursTotal();
+    queueSave();
+  }
+
+  list.querySelectorAll('input.hd-digit').forEach(inp=>{
+    inp.addEventListener('focus', ()=>{ AppState.isTyping = true; });
+    inp.addEventListener('input', ()=>{
+      inp.value = inp.value.replace(/[^0-9]/g, '').slice(0,4);
+      // auto-advance from start to end field once 4 digits are typed
+      if(inp.value.length === 4 && inp.getAttribute('data-part') === 'start'){
+        const card = inp.closest('.hours-day-card');
+        const endInp = card.querySelector('input[data-part="end"]');
+        if(endInp && !endInp.value) endInp.focus();
+      }
+    });
+    inp.addEventListener('blur', ()=>{
+      AppState.isTyping = false;
+      const actualKey = inp.getAttribute('data-actualkey');
+      const card = inp.closest('.hours-day-card');
+      combineAndSave(actualKey, card);
+    });
+  });
+}
+
+/** Refreshes just the "Xh logged this week" total badge, without re-rendering the whole day list. */
+function updateHoursTotal(){
+  if(!activeUser) return;
+  const weekEnd = addDays(weekStart, 6);
+  const actualTotal = actualHoursForRange(weekStart, weekEnd, activeUser);
+  const totalEl = document.getElementById('hoursTotal');
+  if(actualTotal > 0){
+    totalEl.textContent = `${actualTotal % 1 === 0 ? actualTotal : actualTotal.toFixed(1)}h logged this week`;
+    totalEl.style.display = 'block';
+  } else {
+    totalEl.style.display = 'none';
+  }
+}
+
 function renderDays(){
   const container = document.getElementById('days');
   container.innerHTML = '';
@@ -1892,18 +2099,22 @@ function setViewMode(mode){
   viewMode = mode;
   const editTab = document.getElementById('tabEdit');
   const mineTab = document.getElementById('tabMine');
+  const hoursTab = document.getElementById('tabHours');
   const ownerTab = document.getElementById('tabOwner');
   const editEl = document.getElementById('days');
   const mineEl = document.getElementById('mineView');
+  const hoursEl = document.getElementById('hoursView');
   const ownerEl = document.getElementById('ownerView');
   const whobarEl = document.getElementById('whobar');
   const legend = document.getElementById('legendText');
 
   editTab.classList.remove('active');
   mineTab.classList.remove('active');
+  hoursTab.classList.remove('active');
   ownerTab.classList.remove('active');
   editEl.style.display = 'none';
   mineEl.style.display = 'none';
+  hoursEl.style.display = 'none';
   ownerEl.style.display = 'none';
   whobarEl.style.display = 'none';
 
@@ -1923,6 +2134,17 @@ function setViewMode(mode){
       openWhoDialog();
     }
     renderMine();
+  } else if(mode === 'hours'){
+    hoursTab.classList.add('active');
+    hoursEl.style.display = 'block';
+    whobarEl.style.display = 'flex';
+    legend.textContent = activeUser
+      ? 'Log the hours you actually worked \u2014 today and past days this week'
+      : 'Choose your name above to log your hours';
+    if(!activeUser){
+      openWhoDialog();
+    }
+    renderHours();
   } else if(mode === 'owner'){
     ownerTab.classList.add('active');
     ownerEl.style.display = 'block';
@@ -1932,6 +2154,7 @@ function setViewMode(mode){
 }
 document.getElementById('tabEdit').addEventListener('click', ()=> setViewMode('edit'));
 document.getElementById('tabMine').addEventListener('click', ()=> setViewMode('mine'));
+document.getElementById('tabHours').addEventListener('click', ()=> setViewMode('hours'));
 document.getElementById('tabOwner').addEventListener('click', ()=> setViewMode('owner'));
 
 function updateOwnerTabLabel(){
