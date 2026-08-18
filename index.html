@@ -2368,22 +2368,34 @@ function csvCell(val){
 
 document.getElementById('exportHoursCsvBtn').addEventListener('click', ()=>{
   const shifts = currentWeekShifts();
-  const rows = [['Date', 'Day', 'Name', 'Scheduled', 'Logged', 'Hours']];
+  const rows = [['Date', 'Day', 'Name', 'Start', 'End', 'Hours']];
 
   for(let i=0;i<7;i++){
     const d = addDays(weekStart, i);
     const iso = fmtISO(d);
     staff.forEach(name=>{
-      const scheduled = shifts[iso + '|' + name] || '';
       const actual = shifts['actual|' + iso + '|' + name] || '';
-      if(!scheduled && !actual) return; // skip rows with nothing to report
+      if(!actual) return; // only actually-worked hours \u2014 no scheduled-only noise
       const r = parseTimeRange(actual);
-      const hrs = r ? (r.durationMin / 60) : '';
-      rows.push([iso, DAY_NAMES[i], name, scheduled, actual, hrs === '' ? '' : (hrs % 1 === 0 ? hrs : hrs.toFixed(2))]);
+      if(!r) return;
+      const hrs = r.durationMin / 60;
+      const [start, end] = actual.split(/-|\u2013|\u2014/);
+      // Comma as decimal separator (e.g. "8,5") since this is built for Dutch
+      // accounting/bookkeeping import, where that's the expected format.
+      const hrsStr = (hrs % 1 === 0 ? String(hrs) : hrs.toFixed(2)).replace('.', ',');
+      rows.push([iso, DAY_NAMES[i], name, start, end, hrsStr]);
     });
   }
 
-  const csv = rows.map(row => row.map(csvCell).join(',')).join('\r\n');
+  if(rows.length === 1){
+    setStatus('No logged hours to export for this week', true);
+    return;
+  }
+
+  // Semicolon delimiter (not comma) \u2014 the standard CSV convention for
+  // Dutch-locale Excel, which otherwise misreads comma-decimal numbers if the
+  // file uses comma as the field separator too.
+  const csv = rows.map(row => row.map(csvCell).join(';')).join('\r\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }); // BOM so Excel opens accents/special chars correctly
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
