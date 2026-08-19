@@ -640,7 +640,7 @@
 
   function tryUnlock(){
     if(lockInput.value === SITE_PASSWORD_EARLY){
-      sessionStorage.setItem(UNLOCK_KEY, "1");
+      localStorage.setItem(UNLOCK_KEY, "1");
       lockScreen.style.display = 'none';
       maybeShowWelcome();
     } else {
@@ -664,7 +664,7 @@
     }, { once: true });
   }
 
-  if(sessionStorage.getItem(UNLOCK_KEY) === "1"){
+  if(localStorage.getItem(UNLOCK_KEY) === "1"){
     lockScreen.style.display = 'none';
     maybeShowWelcome();
   } else {
@@ -754,7 +754,7 @@ let activeUser = localStorage.getItem('echo_rooster_user') || null;
 let periodMode = 'week';
 let ovHidden = new Set();
 let dayShiftMode = JSON.parse(localStorage.getItem('echo_rooster_shift_mode') || '{}'); // iso -> 'day' | 'night', persisted per device
-let ownerUnlocked = sessionStorage.getItem('echo_rooster_owner_unlocked') === '1';
+let ownerUnlocked = localStorage.getItem('echo_rooster_owner_unlocked') === '1';
 const LOCAL_BACKUP_KEY = 'echo_rooster_local_backup';
 
 /** Firestore handles, set up in initFirebase() once the app starts. */
@@ -2347,7 +2347,7 @@ function unlockOwner(){
     return;
   }
   ownerUnlocked = true;
-  sessionStorage.setItem('echo_rooster_owner_unlocked', '1');
+  localStorage.setItem('echo_rooster_owner_unlocked', '1');
   updateOwnerTabLabel();
   renderLiveBanner();
   document.getElementById('ownerGateDialog').close();
