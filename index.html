@@ -98,6 +98,7 @@
   .avail-hint{margin:0 11px 4px;padding:6px 9px;background:#FFF3E0;border:1px solid #E8C88A;border-radius:7px;font-size:10px;color:#8A6512;line-height:1.35;}
   .scheduled-badge{margin:0 11px 6px;padding:8px 10px;background:#EEF4EA;border:1px solid #9CB98F;border-radius:8px;font-size:12px;color:#3F6B32;}
   body.dark-mode .scheduled-badge{background:#22301F;border-color:#5A7A4E;color:#8FBF80;}
+  .closed-badge{margin:0 11px 8px;padding:8px 10px;background:#3A342C;border:1px solid #5A5142;border-radius:8px;font-size:12px;color:#C99A6B;}
 
   .hours-day-card{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden;box-shadow:0 1px 3px rgba(36,31,25,0.04);}
   .hours-day-card.future{opacity:0.5;}
@@ -276,6 +277,10 @@
   table.ov-grid td.note-cell.has-note{color:var(--accent);background:#FFF3E0 !important;}
   table.ov-grid td.cov-gap{background:#FBEAE6 !important;color:#B33A2E !important;font-weight:800 !important;}
   table.ov-grid thead th.cov-gap-head{background:#FBEAE6;color:#B33A2E;}
+  table.ov-grid thead th.daytoggle{cursor:pointer;}
+  table.ov-grid thead th.closed-head{background:#3A342C;color:#A69B8A;}
+  table.ov-grid thead th.closed-head .closed-tag{font-size:8px;font-weight:800;letter-spacing:0.08em;color:#C99A6B;margin-top:2px;}
+  body.dark-mode table.ov-grid thead th.closed-head{background:#1A1712;color:#7A7062;}
   .unresolved-panel .up-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#8A6512;margin-bottom:8px;}
   .unresolved-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid #E8C88A;border-radius:7px;padding:6px 8px;margin-bottom:5px;font-size:11px;cursor:pointer;}
   .unresolved-row:last-child{margin-bottom:0;}
@@ -543,7 +548,19 @@
     <h3>Recent activity</h3>
     <div id="logList"></div>
     <div class="dialog-actions" style="margin-top:14px;">
+      <button class="cancel" id="clearLogBtn" style="color:#B33A2E;border-color:#E8A99A;">Clear log</button>
       <button class="cancel" id="logCancel">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="confirmClearLogDialog">
+  <div class="dialog-inner">
+    <h3>Clear activity log?</h3>
+    <div style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">This permanently deletes the recent-activity history for everyone on the team \u2014 it's shared, synced data, not just your own view. This can't be undone.</div>
+    <div class="dialog-actions">
+      <button class="cancel" id="confirmClearLogCancel">Cancel</button>
+      <button class="confirm" id="confirmClearLogOk" style="background:#B33A2E;">Clear log</button>
     </div>
   </div>
 </dialog>
@@ -909,7 +926,7 @@ function setupFocusReturn(dialog){
     dialog._opener = null;
   });
 }
-['ownerGateDialog','addStaffDialog','whoDialog','clearWeekDialog','confirmRemoveDialog','logDialog','assignDialog','noteDialog','welcomeDialog']
+['ownerGateDialog','addStaffDialog','whoDialog','clearWeekDialog','confirmRemoveDialog','logDialog','assignDialog','noteDialog','welcomeDialog','confirmClearLogDialog']
   .forEach(id=>{
     const el = document.getElementById(id);
     if(el) setupFocusReturn(el);
@@ -1509,6 +1526,7 @@ function findAvailableNoShift(){
     if(shifts[k] !== 'yes') return;
     const parts = k.split('|'); // ['avail', iso, name]
     const iso = parts[1], name = parts[2];
+    if(shifts['closed|' + iso] === '1') return; // day is marked closed, nothing to assign
     const time = shifts[iso + '|' + name];
     if(!time){
       results.push({ iso, name });
@@ -1720,7 +1738,7 @@ function renderOverview(){
   for(let i=0;i<7;i++){
     const d = addDays(weekStart, i);
     const iso = fmtISO(d);
-    dayCols.push({ iso, isToday: iso === todayISO, label: WEEKDAY_SHORT[i].charAt(0).toUpperCase()+WEEKDAY_SHORT[i].slice(1), date: d.getDate() });
+    dayCols.push({ iso, isToday: iso === todayISO, isClosed: shifts['closed|' + iso] === '1', label: WEEKDAY_SHORT[i].charAt(0).toUpperCase()+WEEKDAY_SHORT[i].slice(1), date: d.getDate() });
   }
 
   // Coverage: how many people (out of everyone, not just visible/filtered) have a real
@@ -1730,7 +1748,7 @@ function renderOverview(){
   );
 
   let thead = '<tr><th class="namecol">Team</th>' + dayCols.map((c, i) =>
-    `<th class="${c.isToday?'today':''}${coverageCounts[i]===0?' cov-gap-head':''}">${c.label}<br>${c.date}${c.isToday ? `<div class="now-clock">${nowLabel}</div>` : ''}</th>`
+    `<th class="daytoggle${c.isToday?' today':''}${coverageCounts[i]===0 && !c.isClosed?' cov-gap-head':''}${c.isClosed?' closed-head':''}" data-iso="${c.iso}" data-day="${c.label} ${c.date}" role="button" tabindex="0" aria-label="${c.label} ${c.date}, ${c.isClosed ? 'closed \u2014 tap to reopen' : 'tap to mark closed'}">${c.label}<br>${c.date}${c.isToday ? `<div class="now-clock">${nowLabel}</div>` : ''}${c.isClosed ? '<div class="closed-tag">CLOSED</div>' : ''}</th>`
   ).join('') + '</tr>';
 
   let tbody = '';
@@ -1800,6 +1818,33 @@ function renderOverview(){
       }
     });
   });
+  wrap.querySelectorAll('th.daytoggle').forEach(th=>{
+    th.addEventListener('click', ()=> toggleDayClosed(th.getAttribute('data-iso')));
+    th.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        toggleDayClosed(th.getAttribute('data-iso'));
+      }
+    });
+  });
+}
+
+/** Toggles whether a day is marked "Closed" \u2014 closed days are excluded from the Available-needs-a-shift panel and dimmed in the table. */
+function toggleDayClosed(iso){
+  const wk = currentWeekShifts();
+  const key = 'closed|' + iso;
+  captureUndoSnapshot(`marking ${iso} as ${wk[key] === '1' ? 'open' : 'closed'}`);
+  AppState.locallyTouched.add(key);
+  if(wk[key] === '1'){
+    delete wk[key];
+    logChange(`Marked ${iso} as open`);
+  } else {
+    wk[key] = '1';
+    logChange(`Marked ${iso} as closed`);
+  }
+  renderOverview();
+  renderTodayStrip();
+  queueSave();
 }
 
 // ---------- owner: per-day notes (e.g. "staff party tonight, expect busy") ----------
@@ -2076,6 +2121,7 @@ function renderDays(){
     const availVal = shifts[availKey] || '';
     const currentVal = shifts[key] || '';
     const noteVal = shifts[noteKey] || '';
+    const isClosed = shifts['closed|' + iso] === '1';
 
     const card = document.createElement('div');
     card.className = 'day-card';
@@ -2083,6 +2129,7 @@ function renderDays(){
 
     card.innerHTML = `
       <div class="day-head${isToday ? ' today' : ''}"><span class="dname">${DAY_NAMES[i]}</span><span class="ddate">${d.getDate()} ${monthShort(d)}</span></div>
+      ${isClosed ? '<div class="closed-badge">\u{1F6AB} Echo is closed this day \u2014 no need to set availability.</div>' : ''}
       <div class="field-label">Availability</div>
       <div class="avail-toggle">
         <button type="button" class="avail-opt${availVal==='yes'?' on-yes':''}" data-availkey="${availKey}" data-set="yes" aria-pressed="${availVal==='yes'}">Available</button>
@@ -2532,6 +2579,19 @@ document.getElementById('logBtn').addEventListener('click', ()=>{
 });
 document.getElementById('logCancel').addEventListener('click', ()=>{
   document.getElementById('logDialog').close();
+});
+document.getElementById('clearLogBtn').addEventListener('click', ()=>{
+  document.getElementById('logDialog').close();
+  openDialog(document.getElementById('confirmClearLogDialog'));
+});
+document.getElementById('confirmClearLogCancel').addEventListener('click', ()=>{
+  document.getElementById('confirmClearLogDialog').close();
+});
+document.getElementById('confirmClearLogOk').addEventListener('click', ()=>{
+  changeLog = [];
+  document.getElementById('confirmClearLogDialog').close();
+  queueSave();
+  setStatus('Activity log cleared');
 });
 
 // ---------- theme toggle button ----------
