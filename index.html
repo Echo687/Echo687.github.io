@@ -164,6 +164,12 @@
   }
   dialog::backdrop{background:rgba(36,31,25,0.45);}
   .dialog-inner{padding:20px;}
+  .welcome-inner{max-height:80vh;overflow-y:auto;}
+  .welcome-logo{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:26px;color:var(--accent);letter-spacing:-0.01em;margin-bottom:6px;}
+  .welcome-intro{font-size:13px;color:var(--ink-soft);line-height:1.5;margin:10px 0;}
+  .welcome-item{border-left:3px solid var(--accent-soft);padding:2px 0 2px 12px;margin-bottom:12px;}
+  .welcome-item-title{font-weight:800;font-size:13px;margin-bottom:2px;}
+  .welcome-item-desc{font-size:12px;color:var(--ink-soft);line-height:1.45;}
   .dialog-inner h3{margin:0 0 12px;font-size:16px;font-weight:800;}
   .dialog-inner input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:12px;}
   .dialog-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
@@ -340,6 +346,12 @@
   #printMonth .pm-none{color:#A69B8A;font-style:italic;}
   #printMonth .pm-note{font-size:10.5px;color:#8A6512;margin-top:4px;}
   #printMonth .pm-footer{margin-top:16px;font-size:9.5px;color:#A69B8A;text-align:center;}
+  /* Accessibility: a clear, consistent focus ring for keyboard navigation,
+     shown only when tabbing (not on mouse/touch clicks) via :focus-visible. */
+  button:focus-visible, input:focus-visible, td[tabindex]:focus-visible, a:focus-visible{
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+  }
 </style>
 </head>
 <body>
@@ -563,6 +575,30 @@
   </div>
 </dialog>
 
+<dialog id="welcomeDialog" aria-labelledby="welcomeTitle" aria-describedby="welcomeDesc">
+  <div class="dialog-inner welcome-inner">
+    <div class="welcome-logo">ECHO</div>
+    <h3 id="welcomeTitle" style="margin-top:0;">Welcome to Echo Schedule</h3>
+    <p id="welcomeDesc" class="welcome-intro">Here's a quick tour:</p>
+    <div class="welcome-item">
+      <div class="welcome-item-title">Fill in</div>
+      <div class="welcome-item-desc">Set which days you're available (or not) each week, plus an optional note for anything an owner should know.</div>
+    </div>
+    <div class="welcome-item">
+      <div class="welcome-item-title">My Schedule</div>
+      <div class="welcome-item-desc">See the shifts you've actually been assigned, by week, month, or year.</div>
+    </div>
+    <div class="welcome-item">
+      <div class="welcome-item-title">Hours</div>
+      <div class="welcome-item-desc">After a shift, log the hours you actually worked &mdash; used for payroll.</div>
+    </div>
+    <p class="welcome-intro">First, tap <b>Change</b> near the top and choose your name so the app knows who you are.</p>
+    <div class="dialog-actions">
+      <button class="confirm" id="welcomeStart" style="width:100%;">Got it, let's go</button>
+    </div>
+  </div>
+</dialog>
+
 <div id="printMonth"></div>
 
 <script>
@@ -589,6 +625,7 @@
     if(lockInput.value === SITE_PASSWORD_EARLY){
       sessionStorage.setItem(UNLOCK_KEY, "1");
       lockScreen.style.display = 'none';
+      maybeShowWelcome();
     } else {
       lockError.textContent = 'Incorrect password';
       lockInput.value = '';
@@ -596,8 +633,23 @@
     }
   }
 
+  /** Shows the one-time welcome/tour dialog on a person's very first visit to this browser. */
+  function maybeShowWelcome(){
+    const WELCOME_KEY = 'echo_rooster_welcome_seen';
+    if(localStorage.getItem(WELCOME_KEY) === '1') return;
+    const dialog = document.getElementById('welcomeDialog');
+    if(!dialog || dialog.open) return;
+    dialog.showModal();
+    document.getElementById('welcomeStart').focus();
+    document.getElementById('welcomeStart').addEventListener('click', ()=>{
+      localStorage.setItem(WELCOME_KEY, '1');
+      dialog.close();
+    }, { once: true });
+  }
+
   if(sessionStorage.getItem(UNLOCK_KEY) === "1"){
     lockScreen.style.display = 'none';
+    maybeShowWelcome();
   } else {
     lockInput.focus();
   }
@@ -836,6 +888,33 @@ async function withRetry(fn, retries){
 }
 
 /** Sets up the Firestore app/db handles. Call once at startup, before loadAll()/startRealtimeSync(). */
+/**
+ * Accessibility: opens a <dialog>, remembering whatever element had keyboard
+ * focus beforehand (the button that triggered it). Pairs with
+ * setupFocusReturn() below, which returns focus there when the dialog closes
+ * \u2014 whether closed via a button, Escape, or any other route \u2014 so keyboard
+ * and screen-reader users land back where they started instead of losing
+ * their place on the page.
+ */
+function openDialog(dialog){
+  dialog._opener = document.activeElement;
+  dialog.showModal();
+}
+/** Wires the focus-return behavior for a dialog. Call once per dialog at startup. */
+function setupFocusReturn(dialog){
+  dialog.addEventListener('close', ()=>{
+    if(dialog._opener && document.body.contains(dialog._opener) && typeof dialog._opener.focus === 'function'){
+      dialog._opener.focus();
+    }
+    dialog._opener = null;
+  });
+}
+['ownerGateDialog','addStaffDialog','whoDialog','clearWeekDialog','confirmRemoveDialog','logDialog','assignDialog','noteDialog','welcomeDialog']
+  .forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) setupFocusReturn(el);
+  });
+
 function initFirebase(){
   if(!configOk) return;
   const app = initializeApp(FIREBASE);
@@ -1245,7 +1324,7 @@ function confirmRemoveStaff(name){
   document.getElementById('confirmRemoveText').textContent = `Remove ${name} from the schedule team? This won't delete their past shifts, but they'll no longer appear in the schedule.`;
   const dialog = document.getElementById('confirmRemoveDialog');
   dialog.dataset.name = name;
-  dialog.showModal();
+  openDialog(dialog);
 }
 
 document.getElementById('confirmRemoveCancel').addEventListener('click', ()=>{
@@ -1274,7 +1353,7 @@ document.getElementById('confirmRemoveOk').addEventListener('click', ()=>{
 
 document.getElementById('manageTeamBtn').addEventListener('click', ()=>{
   renderTeamList();
-  document.getElementById('addStaffDialog').showModal();
+  openDialog(document.getElementById('addStaffDialog'));
 });
 
 document.getElementById('cancelAdd').addEventListener('click', ()=>{
@@ -1326,7 +1405,7 @@ function renderWhoGrid(){
 
 function openWhoDialog(){
   renderWhoGrid();
-  document.getElementById('whoDialog').showModal();
+  openDialog(document.getElementById('whoDialog'));
 }
 
 document.getElementById('whoChangeBtn').addEventListener('click', openWhoDialog);
@@ -1663,17 +1742,21 @@ function renderOverview(){
       const time = shifts[c.iso + '|' + name];
       const avail = shifts['avail|' + c.iso + '|' + name];
       let cls = 'empty', label = '\u2014';
-      if(time){ cls = ''; label = escapeHtml(time); }
-      else if(avail === 'no'){ cls = 'no'; label = 'No'; }
-      else if(avail === 'yes'){ cls = 'yes-only'; label = 'OK'; }
+      let statusText = 'not filled in';
+      if(time){ cls = ''; label = escapeHtml(time); statusText = `scheduled ${time}`; }
+      else if(avail === 'no'){ cls = 'no'; label = 'No'; statusText = 'unavailable'; }
+      else if(avail === 'yes'){ cls = 'yes-only'; label = 'OK'; statusText = 'available, no shift yet'; }
       if(time && avail === 'no'){
         cls = 'conflict';
         label = '\u26d4 ' + escapeHtml(time);
+        statusText = `conflict \u2014 scheduled ${time} but marked unavailable`;
       }
       if(c.isToday && time && isWorkingNow(time, nowMin) && avail !== 'no'){
         cls = 'live';
+        statusText += ', currently working';
       }
-      tbody += `<td class="cell ${cls}" data-name="${escapeHtml(name)}" data-iso="${c.iso}" data-day="${c.label} ${c.date}">${label}</td>`;
+      const cellLabel = `${name}, ${c.label} ${c.date}: ${statusText}`;
+      tbody += `<td class="cell ${cls}" data-name="${escapeHtml(name)}" data-iso="${c.iso}" data-day="${c.label} ${c.date}" role="button" tabindex="0" aria-label="${escapeHtml(cellLabel)}">${label}</td>`;
     });
     tbody += '</tr>';
   });
@@ -1687,7 +1770,8 @@ function renderOverview(){
   tbody += '<tr class="note-row"><td class="namecol">Notes</td>' +
     dayCols.map(c=>{
       const note = shifts['note|' + c.iso] || '';
-      return `<td class="note-cell${note ? ' has-note' : ''}" data-iso="${c.iso}" data-day="${c.label} ${c.date}" title="${escapeHtml(note)}">${note ? '\u{1F4DD}' : '+'}</td>`;
+      const noteCellLabel = note ? `Note for ${c.label} ${c.date}: ${note}` : `Add a note for ${c.label} ${c.date}`;
+      return `<td class="note-cell${note ? ' has-note' : ''}" data-iso="${c.iso}" data-day="${c.label} ${c.date}" title="${escapeHtml(note)}" role="button" tabindex="0" aria-label="${escapeHtml(noteCellLabel)}">${note ? '\u{1F4DD}' : '+'}</td>`;
     }).join('') +
     '</tr>';
 
@@ -1698,10 +1782,22 @@ function renderOverview(){
     td.addEventListener('click', ()=>{
       openAssignDialog(td.getAttribute('data-name'), td.getAttribute('data-iso'), td.getAttribute('data-day'));
     });
+    td.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        openAssignDialog(td.getAttribute('data-name'), td.getAttribute('data-iso'), td.getAttribute('data-day'));
+      }
+    });
   });
   wrap.querySelectorAll('td.note-cell').forEach(td=>{
     td.addEventListener('click', ()=>{
       openNoteDialog(td.getAttribute('data-iso'), td.getAttribute('data-day'));
+    });
+    td.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        openNoteDialog(td.getAttribute('data-iso'), td.getAttribute('data-day'));
+      }
     });
   });
 }
@@ -1712,7 +1808,7 @@ function openNoteDialog(iso, dayLabel){
   document.getElementById('noteDay').textContent = dayLabel;
   document.getElementById('noteInput').value = shifts['note|' + iso] || '';
   document.getElementById('noteDialog').dataset.iso = iso;
-  document.getElementById('noteDialog').showModal();
+  openDialog(document.getElementById('noteDialog'));
   document.getElementById('noteInput').focus();
 }
 document.getElementById('noteSave').addEventListener('click', ()=>{
@@ -1753,7 +1849,7 @@ function openAssignDialog(name, iso, dayLabel){
     });
   });
   document.getElementById('assignDialog').dataset.key = key;
-  document.getElementById('assignDialog').showModal();
+  openDialog(document.getElementById('assignDialog'));
   document.getElementById('assignInput').focus();
 }
 
@@ -1989,8 +2085,8 @@ function renderDays(){
       <div class="day-head${isToday ? ' today' : ''}"><span class="dname">${DAY_NAMES[i]}</span><span class="ddate">${d.getDate()} ${monthShort(d)}</span></div>
       <div class="field-label">Availability</div>
       <div class="avail-toggle">
-        <button type="button" class="avail-opt${availVal==='yes'?' on-yes':''}" data-availkey="${availKey}" data-set="yes">Available</button>
-        <button type="button" class="avail-opt${availVal==='no'?' on-no':''}" data-availkey="${availKey}" data-set="no">Unavailable</button>
+        <button type="button" class="avail-opt${availVal==='yes'?' on-yes':''}" data-availkey="${availKey}" data-set="yes" aria-pressed="${availVal==='yes'}">Available</button>
+        <button type="button" class="avail-opt${availVal==='no'?' on-no':''}" data-availkey="${availKey}" data-set="no" aria-pressed="${availVal==='no'}">Unavailable</button>
       </div>
       ${currentVal ? `<div class="scheduled-badge">\u{1F4C5} Scheduled: <b>${escapeHtml(currentVal)}</b></div>` : ''}
       ${availVal === 'no' && currentVal ? '<div class="avail-hint" style="background:#FBEAE6;border-color:#E8A99A;color:#B33A2E;">You\u2019re marked unavailable, but a shift (' + escapeHtml(currentVal) + ') is still assigned \u2014 let an owner know.</div>' : ''}
@@ -2126,7 +2222,7 @@ function setViewMode(mode){
   if(mode === 'owner' && !ownerUnlocked){
     document.getElementById('ownerPwInput').value = '';
     document.getElementById('ownerPwErr').textContent = '';
-    document.getElementById('ownerGateDialog').showModal();
+    openDialog(document.getElementById('ownerGateDialog'));
     document.getElementById('ownerPwInput').focus();
     return;
   }
@@ -2432,7 +2528,7 @@ function renderLog(){
 }
 document.getElementById('logBtn').addEventListener('click', ()=>{
   renderLog();
-  document.getElementById('logDialog').showModal();
+  openDialog(document.getElementById('logDialog'));
 });
 document.getElementById('logCancel').addEventListener('click', ()=>{
   document.getElementById('logDialog').close();
