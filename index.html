@@ -59,13 +59,23 @@
   body.dark-mode .ov-chip.on{background:#FFFFFF;color:#17130F;border:2px solid #FFFFFF;font-weight:800;}
   *{box-sizing:border-box;}
   body{margin:0;background:var(--cream);color:var(--ink);font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:40px;}
-  /* On wide screens (laptops/desktops), keep the app at a comfortable phone-like
-     width, centered, instead of stretching everything full-width \u2014 mobile is
-     completely unaffected since this only kicks in above 560px. */
+  /* Tablet-ish width: keep a comfortable phone-like column, centered, instead
+     of stretching everything full-width. Mobile itself is untouched below 560px. */
   @media screen and (min-width:560px){
     html{background:#E7DFD0;}
     body{max-width:480px;margin:0 auto;min-height:100vh;box-shadow:0 0 40px rgba(36,31,25,0.12);}
     body.dark-mode{box-shadow:0 0 40px rgba(0,0,0,0.4);}
+  }
+  /* True desktop/laptop width: use the extra space instead of just showing a
+     bigger phone. Day cards in Fill in / Hours lay out side by side in a grid;
+     the Owner table naturally shows more columns without needing to scroll. */
+  @media screen and (min-width:900px){
+    body{max-width:1040px;}
+    #days, #hoursList{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;align-items:start;}
+    #days .day-card, #hoursList .hours-day-card{margin-bottom:0;}
+  }
+  @media screen and (min-width:1300px){
+    #days, #hoursList{grid-template-columns:repeat(3,1fr);}
   }
 
   header{padding:14px 16px 12px;border-bottom:1px solid var(--line);background:var(--cream);position:sticky;top:0;z-index:20;}
