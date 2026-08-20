@@ -264,12 +264,12 @@
   table.ov-grid thead th.today{color:var(--accent);position:relative;}
   table.ov-grid th.namecol, table.ov-grid td.namecol{position:sticky;left:0;background:var(--card);text-align:left;padding:6px 8px;font-weight:700;font-size:11px;z-index:2;border-right:1px solid var(--line);white-space:nowrap;}
   table.ov-grid thead th.namecol{background:#F7F2E8;z-index:3;}
-  table.ov-grid td.cell{color:#2F6B3B;font-weight:700;background:#E6F3E4;}
+  table.ov-grid td.cell{color:#245A2F;font-weight:700;background:#BFE3B4;}
   table.ov-grid td.cell.empty{color:#B5AB9B;background:#FFF7E6;font-weight:400;}
-  table.ov-grid td.cell.no{color:#B33A2E;font-weight:600;background:#FBEAE6;}
-  table.ov-grid td.cell.yes-only{color:#4A6B3E;font-weight:600;background:#EEF4EA;}
+  table.ov-grid td.cell.no{color:#9E3226;font-weight:600;background:#F5CCC0;}
+  table.ov-grid td.cell.yes-only{color:#3F6B32;font-weight:600;background:#D9EAD0;}
   table.ov-grid td.cell.live{background:#1F1B16;color:#3FCF6E;font-weight:800;position:relative;}
-  table.ov-grid td.cell.conflict{background:repeating-linear-gradient(45deg,#FBEAE6,#FBEAE6 4px,#F5D5CE 4px,#F5D5CE 8px);color:#B33A2E;font-weight:800;border:1px solid #B33A2E;}
+  table.ov-grid td.cell.conflict{background:repeating-linear-gradient(45deg,#F5CCC0,#F5CCC0 4px,#EDB6A5 4px,#EDB6A5 8px);color:#9E3226;font-weight:800;border:1px solid #9E3226;}
   table.ov-grid td.cell.live::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#3FCF6E;margin-right:4px;animation:pulse 1.8s infinite;}
   .jump-date-row{display:flex;align-items:center;gap:8px;padding:0 0 12px;font-size:12px;color:var(--ink-soft);}
   .jump-date-row input[type=date]{flex:1;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;font-family:inherit;background:var(--card);color:var(--ink);}
@@ -474,9 +474,9 @@
       <div id="ovTableWrap"></div>
       <div class="ov-legend">
         <span><i style="background:#FFF7E6;border:1px solid var(--line);"></i>Not filled in</span>
-        <span><i style="background:#FBEAE6;"></i>Unavailable</span>
-        <span><i style="background:#EEF4EA;"></i>Available (no time)</span>
-        <span><i style="background:repeating-linear-gradient(45deg,#FBEAE6,#FBEAE6 2px,#F5D5CE 2px,#F5D5CE 4px);border:1px solid #B33A2E;"></i>Conflict</span>
+        <span><i style="background:#F5CCC0;"></i>Unavailable</span>
+        <span><i style="background:#D9EAD0;"></i>Available (no time)</span>
+        <span><i style="background:repeating-linear-gradient(45deg,#F5CCC0,#F5CCC0 2px,#EDB6A5 2px,#EDB6A5 4px);border:1px solid #9E3226;"></i>Conflict</span>
       </div>
     </div>
     <div class="pdf-btn-wrap" style="padding:14px 0 0;">
@@ -1111,6 +1111,17 @@ function sanitizeShiftText(raw){
   return raw.replace(/[<>]/g, '').trim().slice(0, 40);
 }
 
+/**
+ * Normalizes an easy typo \u2014 a period instead of a colon between hours and
+ * minutes (e.g. "18.30" \u2192 "18:30") \u2014 so stored shift times always display
+ * consistently and reliably parse for hours totals, conflicts, and exports.
+ * Only touches patterns that look like an hour.minute pair; leaves everything
+ * else (like "Unavailable" or "Closing") untouched.
+ */
+function normalizeShiftTime(raw){
+  return raw.replace(/\b(\d{1,2})\.(\d{2})\b/g, '$1:$2');
+}
+
 /** Sanitizes a team member name: strips HTML-significant characters and caps length. */
 function sanitizeName(raw){
   return raw.replace(/[<>]/g, '').trim().slice(0, 20);
@@ -1122,9 +1133,14 @@ function monthShort(d){
 }
 
 // ---------- time parsing (best-effort, for the live banner + hour totals) ----------
+/**
+ * Parses a single clock time like "18:30", "18.30" (period accepted \u2014 an easy
+ * typo for a colon), "6pm", or "18" into minutes-since-midnight, or null if it
+ * doesn't look like a time at all.
+ */
 function parseClock(token){
   token = token.trim().toLowerCase();
-  let m = token.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+  let m = token.match(/^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?$/);
   if(!m) return null;
   let h = parseInt(m[1],10);
   const min = m[2] ? parseInt(m[2],10) : 0;
@@ -1899,7 +1915,7 @@ function openAssignDialog(name, iso, dayLabel){
 
 document.getElementById('assignSave').addEventListener('click', ()=>{
   const key = document.getElementById('assignDialog').dataset.key;
-  const val = sanitizeShiftText(document.getElementById('assignInput').value);
+  const val = normalizeShiftTime(sanitizeShiftText(document.getElementById('assignInput').value));
   const wk = currentWeekShifts();
   AppState.locallyTouched.add(key);
   captureUndoSnapshot(`assigning ${key.split('|')[1]}'s shift on ${key.split('|')[0]}`);
