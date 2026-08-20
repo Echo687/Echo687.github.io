@@ -28,20 +28,16 @@
   body.dark-mode table.ov-grid td.cell.no{background:#3A241D;color:#E38A78;}
   body.dark-mode table.ov-grid td.cell.yes-only{background:#22301F;color:#8FBF80;}
   body.dark-mode table.ov-grid td.cell.conflict{background:repeating-linear-gradient(45deg,#3A241D,#3A241D 4px,#4A2E24 4px,#4A2E24 8px);color:#E38A78;border-color:#E38A78;}
-  body.dark-mode .ov-row .badge.no, body.dark-mode .shift-value{background:transparent;}
   body.dark-mode input, body.dark-mode .custom-input-wrap input{background:#2B2620;color:var(--ink);}
-  body.dark-mode .avail-opt, body.dark-mode .dn-btn, body.dark-mode .qt-btn{background:#2B2620;border-color:#4A4038;}
+  body.dark-mode .avail-opt, body.dark-mode .qt-btn{background:#2B2620;border-color:#4A4038;}
   body.dark-mode .avail-opt.on-yes{background:#22301F;border-color:#5A7A4E;color:#8FBF80;}
   body.dark-mode .avail-opt.on-no{background:#3A241D;border-color:#8A5040;color:#E38A78;}
-  body.dark-mode .dn-btn.on{background:var(--ink);border-color:var(--ink);color:var(--cream);}
   body.dark-mode .qt-btn.selected{background:var(--accent);border-color:var(--accent);color:#fff;}
-  body.dark-mode .qt-btn.custom-btn.selected{background:var(--ink);border-color:var(--ink);color:var(--cream);}
   body.dark-mode .unresolved-panel{background:#3A2E14;border-color:#7A5E1E;}
   body.dark-mode .unresolved-row{background:#2B2620;border-color:#7A5E1E;}
   body.dark-mode .avail-hint{background:#3A2E14;border-color:#7A5E1E;}
   body.dark-mode .ov-chip{background:#2B2620;color:var(--ink-soft);border:1px solid #4A4038;}
   body.dark-mode .ov-chip.on{background:#FFFFFF;color:#17130F;border:2px solid #FFFFFF;font-weight:800;}
-  body.dark-mode .staff-chip{background:#2B2620;border-color:#4A4038;}
   *{box-sizing:border-box;}
   body{margin:0;background:var(--cream);color:var(--ink);font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:40px;}
 
@@ -88,9 +84,6 @@
   .day-head.today .dname{color:var(--accent);}
   .field-label{font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-soft);font-weight:700;padding:8px 11px 4px;display:flex;align-items:center;justify-content:space-between;}
   .field-label:first-child{padding-top:9px;}
-  .dn-toggle{display:flex;gap:4px;text-transform:none;letter-spacing:0;}
-  .dn-btn{padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:9px;font-weight:700;cursor:pointer;}
-  .dn-btn.on{background:var(--ink);color:var(--cream);border-color:var(--ink);}
   .avail-toggle{display:flex;gap:6px;padding:0 11px 4px;}
   .avail-opt{flex:1;padding:11px 8px;min-height:44px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:11px;font-weight:700;cursor:pointer;}
   .avail-opt.on-yes{background:#E7F0E3;border-color:#9CB98F;color:#4A6B3E;}
@@ -125,9 +118,6 @@
   .payroll-row:last-child{border-bottom:none;}
   .payroll-row .pr-name{font-weight:600;}
   .payroll-row .pr-hrs{font-weight:800;color:var(--accent);}
-  .payroll-empty{font-size:12px;color:var(--ink-soft);font-style:italic;}
-  .shift-value{padding:0 14px 4px;font-size:12px;color:var(--ink-soft);}
-  .shift-value b{color:var(--ink);font-weight:700;}
   .custom-input-wrap{padding:2px 11px 9px;}
   .custom-input-wrap input{width:100%;border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-size:12px;font-family:inherit;background:var(--card);color:var(--ink);}
   .custom-input-wrap input.filled{border-color:var(--accent-soft);background:#FFF7F2;}
@@ -136,14 +126,7 @@
   .qt-btn{flex:0 0 auto;padding:10px 12px;min-height:38px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:10px;font-weight:600;cursor:pointer;}
   .qt-btn:active{background:var(--accent-soft);color:var(--ink);}
   .qt-btn.selected{background:var(--accent);color:#fff;border-color:var(--accent);}
-  .qt-btn.custom-btn.selected{background:var(--ink);border-color:var(--ink);color:var(--cream);}
-  .time-hint{font-size:9px;color:#B33A2E;padding:0 11px 8px;margin-top:-2px;}
-  .empty-day{padding:12px 11px;font-size:11px;color:var(--ink-soft);font-style:italic;text-align:center;}
 
-  .staffbar{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;margin-bottom:14px;scrollbar-width:none;}
-  .staffbar::-webkit-scrollbar{display:none;}
-  .staff-chip{flex:0 0 auto;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;white-space:nowrap;}
-  .staff-chip .rm{color:var(--accent);cursor:pointer;font-weight:700;font-size:13px;}
 
   .team-row{display:flex;align-items:center;justify-content:space-between;padding:10px 2px;border-bottom:1px solid var(--line);gap:8px;}
   .team-row:last-child{border-bottom:none;}
@@ -153,7 +136,6 @@
   .team-row.editing{flex-wrap:wrap;}
   .team-row .ten-input{flex:1 1 100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;margin-bottom:6px;}
   .team-empty{padding:12px 2px;font-size:12px;color:var(--ink-soft);font-style:italic;}
-  .add-staff{flex:0 0 auto;background:none;border:1px dashed var(--sand);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--sand);font-weight:700;cursor:pointer;}
 
   .legend{font-size:10px;color:var(--ink-soft);text-align:center;margin:12px 0 5px;}
   .status{text-align:center;font-size:10px;color:var(--ink-soft);height:14px;}
@@ -349,6 +331,7 @@
   #printMonth tr.pm-weekend td{background:#FBF8F1;}
   #printMonth .pm-time{color:#C1502E;font-weight:600;}
   #printMonth .pm-none{color:#A69B8A;font-style:italic;}
+  #printMonth .pm-closed{color:#8A6512;font-weight:700;}
   #printMonth .pm-note{font-size:10.5px;color:#8A6512;margin-top:4px;}
   #printMonth .pm-footer{margin-top:16px;font-size:9.5px;color:#A69B8A;text-align:center;}
   /* Accessibility: a clear, consistent focus ring for keyboard navigation,
@@ -455,7 +438,7 @@
     <div id="teamBarWrap" style="padding:0 0 12px;">
       <button id="manageTeamBtn" style="width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:13px;font-weight:700;cursor:pointer;">&#128101; Manage team</button>
     </div>
-    <div id="payrollPanel" style="display:none;"></div>
+    <div id="payrollPanel" class="payroll-panel" style="display:none;"></div>
     <div id="payrollExportWrap" style="display:none;padding:0 0 14px;">
       <button id="exportHoursCsvBtn" class="util-btn" style="width:100%;">&#8681; Download logged hours (.csv)</button>
     </div>
@@ -1106,12 +1089,6 @@ function sanitizeName(raw){
   return raw.replace(/[<>]/g, '').trim().slice(0, 20);
 }
 
-function availLabel(v){
-  if(v === 'yes') return '\u2713 Available';
-  if(v === 'no') return '\u2717 Unavailable';
-  return '+ Set availability';
-}
-
 function monthShort(d){
   const m = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   return m[d.getMonth()];
@@ -1150,12 +1127,6 @@ function isWorkingNow(str, nowMin){
     return nowMin >= r.start || nowMin < r.end;
   }
   return nowMin >= r.start && nowMin < r.end;
-}
-
-function looksLikeShift(str){
-  if(!str) return true;
-  if(/closing/i.test(str)) return true;
-  return parseTimeRange(str) !== null;
 }
 
 function weeklyHoursFor(name){
@@ -1779,9 +1750,10 @@ function renderOverview(){
     tbody += '</tr>';
   });
 
-  // Coverage summary row: count of people actually scheduled per day, red + bold on zero.
+  // Coverage summary row: count of people actually scheduled per day, red + bold on zero
+  // (unless the day is marked Closed \u2014 zero coverage there is expected, not a gap).
   tbody += '<tr class="cov-row"><td class="namecol">Covered</td>' +
-    coverageCounts.map(n => `<td class="${n===0?'cov-gap':''}">${n}</td>`).join('') +
+    coverageCounts.map((n,i) => `<td class="${n===0 && !dayCols[i].isClosed?'cov-gap':''}">${dayCols[i].isClosed ? '\u2014' : n}</td>`).join('') +
     '</tr>';
 
   // Notes row: click a day's cell to add/edit a short note for that day (e.g. "staff party, expect busy").
@@ -2431,9 +2403,14 @@ function buildPrintMonth(){
       })
       .filter(Boolean);
 
+    const isClosed = wk['closed|' + iso] === '1';
+    const cellBody = isClosed
+      ? '<span class="pm-closed">Closed</span>'
+      : (entries.length ? entries.join(', ') : '<span class="pm-none">\u2014 nobody scheduled</span>');
+
     rows += `<tr class="${isWeekend ? 'pm-weekend':''}">
       <td class="pm-date">${day} ${dayLetters[dowIndex]}</td>
-      <td>${entries.length ? entries.join(', ') : '<span class="pm-none">\u2014 nobody scheduled</span>'}</td>
+      <td>${cellBody}</td>
     </tr>`;
   }
 
@@ -2457,6 +2434,7 @@ function buildPrintWeek(){
     const iso = fmtISO(d);
     const isWeekend = i >= 5;
     const note = shifts['note|' + iso];
+    const isClosed = shifts['closed|' + iso] === '1';
 
     const entries = staff
       .map(name=>{
@@ -2465,9 +2443,13 @@ function buildPrintWeek(){
       })
       .filter(Boolean);
 
+    const cellBody = isClosed
+      ? '<span class="pm-closed">Closed</span>'
+      : (entries.length ? entries.join(', ') : '<span class="pm-none">\u2014 nobody scheduled</span>');
+
     rows += `<tr class="${isWeekend ? 'pm-weekend':''}">
       <td class="pm-date">${dayLetters[i]}<br>${d.getDate()}</td>
-      <td>${entries.length ? entries.join(', ') : '<span class="pm-none">\u2014 nobody scheduled</span>'}${note ? `<div class="pm-note">\u{1F4DD} ${escapeHtml(note)}</div>` : ''}</td>
+      <td>${cellBody}${note ? `<div class="pm-note">\u{1F4DD} ${escapeHtml(note)}</div>` : ''}</td>
     </tr>`;
   }
 
