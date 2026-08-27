@@ -248,6 +248,7 @@
   .mine-row .d{font-weight:700;flex:0 0 auto;}
   .mine-row .v{color:var(--accent);font-weight:600;}
   .mine-row .v.no{color:#7A2E22;}
+  .mine-row .v.pending{color:#8C6D2E;}
   .mine-empty{padding:20px 10px;text-align:center;font-size:13px;color:var(--ink-soft);font-style:italic;}
   .mine-hours-total{background:var(--ink);color:var(--cream);text-align:center;font-weight:800;font-size:14px;padding:10px;border-radius:3px;margin-bottom:10px;}
   .mine-prompt{padding:26px 14px;text-align:center;font-size:13px;color:var(--ink-soft);}
@@ -2281,7 +2282,7 @@ function renderMine(){
     let valueLabel, valueClass = '';
     if(e.time){ valueLabel = e.time; }
     else if(e.avail === 'no'){ valueLabel = 'Unavailable'; valueClass = 'no'; }
-    else { valueLabel = 'Available'; }
+    else { valueLabel = 'Available \u2014 pending'; valueClass = 'pending'; }
     html += `<div class="mine-row"><span class="d">${dateLabel}</span><span class="v ${valueClass}">${escapeHtml(valueLabel)}</span></div>`;
   });
   list.innerHTML = html;
