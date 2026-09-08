@@ -742,6 +742,16 @@ const CONFIG = {
   WEEKDAY_SHORT: ["mon","tue","wed","thu","fri","sat","sun"],
   MONTH_NAMES: ["January","February","March","April","May","June","July","August","September","October","November","December"],
   DEFAULT_STAFF: ["Laurens","Khalil","Jeff","Brygida","Kelvin","Lef"],
+  // Owners who schedule themselves normally but don't log actual hours via
+  // the Hours tab \u2014 excluded from the "Unresolved closing times" nag, since
+  // that would otherwise never resolve for them. Edit this list by name if
+  // who's an owner changes.
+  OWNERS_WHO_DONT_CLOCK: ["Jeff", "Khalil"],
+  // People who invoice separately as freelancers rather than being paid via
+  // payroll (e.g. Laurens). They can still log their own hours in the Hours
+  // tab for their own reference, but are excluded from the "Logged hours"
+  // summary panel and CSV exports the bookkeeper uses for staff payroll.
+  FREELANCERS_EXCLUDED_FROM_PAYROLL: ["Laurens"],
   // Quick shift presets, split by day/night \u2014 tweak here as opening hours change.
   // Day presets are placeholders until September's daytime hours are confirmed.
   NIGHT_OPTIONS: [
@@ -756,7 +766,8 @@ const CONFIG = {
 };
 const {
   FIREBASE, SITE_PASSWORD, OWNER_PASSWORD,
-  DAY_NAMES, WEEKDAY_SHORT, MONTH_NAMES, DEFAULT_STAFF, NIGHT_OPTIONS, DAY_OPTIONS
+  DAY_NAMES, WEEKDAY_SHORT, MONTH_NAMES, DEFAULT_STAFF, NIGHT_OPTIONS, DAY_OPTIONS,
+  OWNERS_WHO_DONT_CLOCK, FREELANCERS_EXCLUDED_FROM_PAYROLL
 } = CONFIG;
 
 /** Whether Firebase is configured (not left as placeholders). */
@@ -1522,6 +1533,7 @@ function findUnresolvedClosings(){
     const val = shifts[k];
     if(!val || !/closing/i.test(val)) return;
     const [iso, name] = k.split('|');
+    if(OWNERS_WHO_DONT_CLOCK.includes(name)) return;
     if(iso < todayISO && iso <= weekEndISO){
       // Already resolved if a real end time has been logged in Hours for this
       // shift \u2014 that IS the answer to "what time did it actually close".
@@ -1737,6 +1749,7 @@ function renderPayrollPanel(){
   const exportWrap = document.getElementById('payrollExportWrap');
   const weekEnd = addDays(weekStart, 6);
   const rows = staff
+    .filter(name => !FREELANCERS_EXCLUDED_FROM_PAYROLL.includes(name))
     .map(name => ({ name, hrs: actualHoursForRange(weekStart, weekEnd, name) }))
     .filter(r => r.hrs > 0);
 
@@ -2577,6 +2590,7 @@ function exportHoursCsv(start, end, filenameSuffix, emptyMessage){
     const dow = WEEKDAY_SHORT[cursor.getDay() === 0 ? 6 : cursor.getDay()-1];
     const dayLabel = dow.charAt(0).toUpperCase()+dow.slice(1);
     staff.forEach(name=>{
+      if(FREELANCERS_EXCLUDED_FROM_PAYROLL.includes(name)) return;
       const actual = wk['actual|' + iso + '|' + name] || '';
       if(!actual) return; // only actually-worked hours \u2014 no scheduled-only noise
       const r = parseTimeRange(actual);
