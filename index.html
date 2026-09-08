@@ -820,7 +820,10 @@ function performUndo(){
     AppState.undoSnapshot = null;
     AppState.undoLabel = '';
     updateUndoButton();
-    if(viewMode === 'owner'){ renderOverview(); } else { renderDays(); }
+    if(viewMode === 'owner'){ renderOverview(); }
+    else if(viewMode === 'mine'){ renderMine(); }
+    else if(viewMode === 'hours'){ renderHours(); }
+    else { renderDays(); }
     renderTodayStrip();
     renderLiveBanner();
     renderWhoBar();
@@ -1006,6 +1009,7 @@ function rerenderCurrentView(){
   if(viewMode === 'owner'){ renderOverview(); }
   else if(viewMode === 'edit'){ renderDays(); }
   else if(viewMode === 'mine'){ renderMine(); }
+  else if(viewMode === 'hours'){ renderHours(); }
 }
 
 /** Initial load: reads the document once (with retry), falls back to the local backup if offline. */
@@ -1334,7 +1338,10 @@ function renderTeamList(){
         captureUndoSnapshot(`renaming ${oldName} to ${newName}`);
         renameStaffEverywhere(oldName, newName);
         renderTeamList();
-        if(viewMode === 'owner'){ renderOverview(); } else { renderDays(); }
+        if(viewMode === 'owner'){ renderOverview(); }
+        else if(viewMode === 'mine'){ renderMine(); }
+        else if(viewMode === 'hours'){ renderHours(); }
+        else { renderDays(); }
         renderTodayStrip();
         renderLiveBanner();
         renderWhoBar();
@@ -1384,7 +1391,10 @@ document.getElementById('confirmRemoveOk').addEventListener('click', ()=>{
   }
   logChange(`Removed ${name} from the team`);
   renderTeamList();
-  if(viewMode === 'owner'){ renderOverview(); } else { renderDays(); }
+  if(viewMode === 'owner'){ renderOverview(); }
+  else if(viewMode === 'mine'){ renderMine(); }
+  else if(viewMode === 'hours'){ renderHours(); }
+  else { renderDays(); }
   renderTodayStrip();
   renderLiveBanner();
   queueSave();
@@ -1407,7 +1417,10 @@ document.getElementById('confirmAdd').addEventListener('click', ()=>{
     staff.push(name);
     logChange(`Added ${name} to the team`);
     renderTeamList();
-    if(viewMode === 'owner'){ renderOverview(); } else { renderDays(); }
+    if(viewMode === 'owner'){ renderOverview(); }
+    else if(viewMode === 'mine'){ renderMine(); }
+    else if(viewMode === 'hours'){ renderHours(); }
+    else { renderDays(); }
     renderTodayStrip();
     renderLiveBanner();
     queueSave();
@@ -1437,6 +1450,7 @@ function renderWhoGrid(){
       document.getElementById('whoDialog').close();
       if(viewMode === 'edit') renderDays();
       if(viewMode === 'mine') renderMine();
+      if(viewMode === 'hours') renderHours();
     });
     grid.appendChild(btn);
   });
