@@ -475,7 +475,8 @@
     </div>
     <div id="payrollPanel" class="payroll-panel" style="display:none;"></div>
     <div id="payrollExportWrap" style="display:none;padding:0 0 14px;">
-      <button id="exportHoursCsvBtn" class="util-btn" style="width:100%;">&#8681; Download logged hours (.csv)</button>
+      <button id="exportHoursCsvBtn" class="util-btn" style="width:100%;margin-bottom:8px;">&#8681; Download logged hours \u2014 this week (.csv)</button>
+      <button id="exportHoursCsvMonthBtn" class="util-btn" style="width:100%;">&#8681; Download logged hours \u2014 this month (.csv)</button>
     </div>
     <div id="overviewDays">
       <div class="ov-filterbar" id="ovFilterBar"></div>
@@ -1517,11 +1518,15 @@ function findUnresolvedClosings(){
   const shifts = currentWeekShifts();
   const results = [];
   Object.keys(shifts).forEach(k=>{
-    if(k.startsWith('avail|') || k.startsWith('pnote|') || k.startsWith('note|')) return;
+    if(k.startsWith('avail|') || k.startsWith('pnote|') || k.startsWith('note|') || k.startsWith('closed|') || k.startsWith('actual|')) return;
     const val = shifts[k];
     if(!val || !/closing/i.test(val)) return;
     const [iso, name] = k.split('|');
     if(iso < todayISO && iso <= weekEndISO){
+      // Already resolved if a real end time has been logged in Hours for this
+      // shift \u2014 that IS the answer to "what time did it actually close".
+      const actual = shifts['actual|' + iso + '|' + name];
+      if(actual && parseTimeRange(actual)) return;
       results.push({ iso, name, value: val });
     }
   });
@@ -1735,10 +1740,15 @@ function renderPayrollPanel(){
     .map(name => ({ name, hrs: actualHoursForRange(weekStart, weekEnd, name) }))
     .filter(r => r.hrs > 0);
 
+  // Export buttons stay available regardless of whether the currently viewed
+  // week has data \u2014 the month export in particular shouldn't disappear just
+  // because this specific week is empty. Downloads handle the "nothing to
+  // export" case gracefully on their own.
+  exportWrap.style.display = 'block';
+
   if(rows.length === 0){
     panel.style.display = 'none';
     panel.innerHTML = '';
-    exportWrap.style.display = 'none';
     return;
   }
 
@@ -1748,7 +1758,6 @@ function renderPayrollPanel(){
 
   panel.innerHTML = `<div class="pp-title">&#128176; Logged hours this week</div>${rowsHtml}`;
   panel.style.display = 'block';
-  exportWrap.style.display = 'block';
 }
 
 function renderOverview(){
@@ -2558,29 +2567,32 @@ function csvCell(val){
   return `"${String(val).replace(/"/g, '""')}"`;
 }
 
-document.getElementById('exportHoursCsvBtn').addEventListener('click', ()=>{
-  const shifts = currentWeekShifts();
+/** Builds and downloads a CSV of everyone's logged (actual) hours between two dates (inclusive). */
+function exportHoursCsv(start, end, filenameSuffix, emptyMessage){
   const rows = [['Date', 'Day', 'Name', 'Start', 'End', 'Hours']];
-
-  for(let i=0;i<7;i++){
-    const d = addDays(weekStart, i);
-    const iso = fmtISO(d);
+  let cursor = new Date(start);
+  while(cursor <= end){
+    const iso = fmtISO(cursor);
+    const wk = shiftsForDate(iso);
+    const dow = WEEKDAY_SHORT[cursor.getDay() === 0 ? 6 : cursor.getDay()-1];
+    const dayLabel = dow.charAt(0).toUpperCase()+dow.slice(1);
     staff.forEach(name=>{
-      const actual = shifts['actual|' + iso + '|' + name] || '';
+      const actual = wk['actual|' + iso + '|' + name] || '';
       if(!actual) return; // only actually-worked hours \u2014 no scheduled-only noise
       const r = parseTimeRange(actual);
       if(!r) return;
       const hrs = r.durationMin / 60;
-      const [start, end] = actual.split(/-|\u2013|\u2014/);
+      const [s, e] = actual.split(/-|\u2013|\u2014/);
       // Comma as decimal separator (e.g. "8,5") since this is built for Dutch
       // accounting/bookkeeping import, where that's the expected format.
       const hrsStr = (hrs % 1 === 0 ? String(hrs) : hrs.toFixed(2)).replace('.', ',');
-      rows.push([iso, DAY_NAMES[i], name, start, end, hrsStr]);
+      rows.push([iso, dayLabel, name, s, e, hrsStr]);
     });
+    cursor = addDays(cursor, 1);
   }
 
   if(rows.length === 1){
-    setStatus('No logged hours to export for this week', true);
+    setStatus(emptyMessage, true);
     return;
   }
 
@@ -2592,12 +2604,22 @@ document.getElementById('exportHoursCsvBtn').addEventListener('click', ()=>{
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  const end = addDays(weekStart, 6);
-  a.download = `echo-hours-${fmtISO(weekStart)}-to-${fmtISO(end)}.csv`;
+  a.download = `echo-hours-${filenameSuffix}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+document.getElementById('exportHoursCsvBtn').addEventListener('click', ()=>{
+  const end = addDays(weekStart, 6);
+  exportHoursCsv(weekStart, end, `${fmtISO(weekStart)}-to-${fmtISO(end)}`, 'No logged hours to export for this week');
+});
+
+document.getElementById('exportHoursCsvMonthBtn').addEventListener('click', ()=>{
+  const monthStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), 1);
+  const monthEnd = new Date(weekStart.getFullYear(), weekStart.getMonth()+1, 0);
+  exportHoursCsv(monthStart, monthEnd, `${MONTH_NAMES[monthStart.getMonth()]}-${monthStart.getFullYear()}`, 'No logged hours to export for this month');
 });
 
 // ---------- calendar export (.ics) \u2014 lets a person import their own shifts into their phone's calendar ----------
