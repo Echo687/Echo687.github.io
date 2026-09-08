@@ -150,6 +150,11 @@
   body.dark-mode .hours-day-card .hd-time{background:#2B2620;color:var(--ink);}
   body.dark-mode .hours-day-card .hd-time.filled{background:#22301F;border-color:#5A7A4E;color:#8FBF80;}
   body.dark-mode .hours-day-card .hd-time::-webkit-calendar-picker-indicator{filter:invert(1);}
+  .hours-day-card .hd-break-row{display:flex;flex-direction:column;gap:4px;margin-top:10px;}
+  .hours-day-card .hd-break{width:100%;border:1px solid var(--line);border-radius:3px;padding:8px;font-size:13px;font-family:inherit;background:#fff;color:var(--ink);}
+  .hours-day-card .hd-break.filled{border-color:#8C6D2E;background:#EDE2C9;color:#6B5220;}
+  body.dark-mode .hours-day-card .hd-break{background:#2B2620;color:var(--ink);}
+  body.dark-mode .hours-day-card .hd-break.filled{background:#332A18;border-color:#8C6D2E;color:#D4B876;}
 
   .payroll-panel{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:10px 12px;margin-bottom:14px;}
   .payroll-panel .pp-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);margin-bottom:8px;}
@@ -433,7 +438,7 @@
   <div id="setupWarning" class="setup-warning" style="display:none">
     Firebase hasn't been set up yet. Open this file and fill in the <code>FIREBASE</code>
     object near the top of the <code>&lt;script&gt;</code> section with your own project's config
-    (Firebase Console \u2192 Project settings \u2192 Your apps).
+    (Firebase Console &rarr; Project settings &rarr; Your apps).
   </div>
   <div id="whobar" class="whobar" style="display:none;">
     <div>You are: <b id="whoName">not set</b></div>
@@ -475,8 +480,8 @@
     </div>
     <div id="payrollPanel" class="payroll-panel" style="display:none;"></div>
     <div id="payrollExportWrap" style="display:none;padding:0 0 14px;">
-      <button id="exportHoursCsvBtn" class="util-btn" style="width:100%;margin-bottom:8px;">&#8681; Download logged hours \u2014 this week (.csv)</button>
-      <button id="exportHoursCsvMonthBtn" class="util-btn" style="width:100%;">&#8681; Download logged hours \u2014 this month (.csv)</button>
+      <button id="exportHoursCsvBtn" class="util-btn" style="width:100%;margin-bottom:8px;">&#8681; Download logged hours &mdash; this week (.csv)</button>
+      <button id="exportHoursCsvMonthBtn" class="util-btn" style="width:100%;">&#8681; Download logged hours &mdash; this month (.csv)</button>
     </div>
     <div id="overviewDays">
       <div class="ov-filterbar" id="ovFilterBar"></div>
@@ -576,7 +581,7 @@
 <dialog id="confirmClearLogDialog">
   <div class="dialog-inner">
     <h3>Clear activity log?</h3>
-    <div style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">This permanently deletes the recent-activity history for everyone on the team \u2014 it's shared, synced data, not just your own view. This can't be undone.</div>
+    <div style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">This permanently deletes the recent-activity history for everyone on the team &mdash; it's shared, synced data, not just your own view. This can't be undone.</div>
     <div class="dialog-actions">
       <button class="cancel" id="confirmClearLogCancel">Cancel</button>
       <button class="confirm" id="confirmClearLogOk" style="background:#7A2E22;">Clear log</button>
@@ -1229,7 +1234,10 @@ function actualHoursForRange(start, end, name){
     const iso = fmtISO(cursor);
     const wk = shiftsForDate(iso);
     const r = parseTimeRange(wk['actual|' + iso + '|' + name]);
-    if(r) totalMin += r.durationMin;
+    if(r){
+      const breakMin = parseInt(wk['break|' + iso + '|' + name], 10) || 0;
+      totalMin += Math.max(0, r.durationMin - breakMin);
+    }
     cursor = addDays(cursor, 1);
   }
   return totalMin / 60;
@@ -1961,14 +1969,26 @@ document.getElementById('assignSave').addEventListener('click', ()=>{
   const key = document.getElementById('assignDialog').dataset.key;
   const val = normalizeShiftTime(sanitizeShiftText(document.getElementById('assignInput').value));
   const wk = currentWeekShifts();
+  const [iso, name] = key.split('|');
   AppState.locallyTouched.add(key);
-  captureUndoSnapshot(`assigning ${key.split('|')[1]}'s shift on ${key.split('|')[0]}`);
+  captureUndoSnapshot(`assigning ${name}'s shift on ${iso}`);
   if(val){
     wk[key] = val;
-    logChange(`Assigned ${key.split('|')[1]} to ${val} on ${key.split('|')[0]}`);
+    logChange(`Assigned ${name} to ${val} on ${iso}`);
+
+    // If this is a real, resolved time (not another "...Closing" placeholder)
+    // and nobody has separately logged actual hours for this shift yet, use
+    // it as the logged hours too \u2014 saves re-typing the same time twice when
+    // resolving a shift's real end time (e.g. from the Unresolved panel).
+    const actualKey = 'actual|' + iso + '|' + name;
+    if(!wk[actualKey] && !/closing/i.test(val) && parseTimeRange(val)){
+      wk[actualKey] = val;
+      AppState.locallyTouched.add(actualKey);
+      logChange(`Logged ${name}'s hours as ${val} on ${iso} (matches assigned shift)`);
+    }
   } else {
     delete wk[key];
-    logChange(`Cleared ${key.split('|')[1]}'s shift on ${key.split('|')[0]}`);
+    logChange(`Cleared ${name}'s shift on ${iso}`);
   }
   document.getElementById('assignDialog').close();
   renderOverview();
@@ -2047,6 +2067,8 @@ function renderHours(){
     const actualKey = 'actual|' + iso + '|' + name;
     const actualVal = shifts[actualKey] || '';
     const { start, end } = timeRangeToParts(actualVal);
+    const breakKey = 'break|' + iso + '|' + name;
+    const breakVal = shifts[breakKey] || '';
 
     const card = document.createElement('div');
     card.className = 'hours-day-card' + (isFuture ? ' future' : '');
@@ -2072,7 +2094,11 @@ function renderHours(){
               <input type="time" class="hd-time${end?' filled':''}" data-actualkey="${actualKey}" data-part="end" value="${end}">
             </div>
           </div>
-          <button type="button" class="hd-clear-btn" data-actualkey="${actualKey}" style="display:${actualVal ? 'block':'none'};">Clear</button>
+          <div class="hd-break-row" style="display:${actualVal ? 'flex':'none'};">
+            <label class="hd-time-label" for="brk-${breakKey}">Break (minutes, unpaid)</label>
+            <input type="number" inputmode="numeric" min="0" max="600" step="5" class="hd-break${breakVal ? ' filled':''}" id="brk-${breakKey}" data-breakkey="${breakKey}" value="${escapeHtml(breakVal)}" placeholder="0">
+          </div>
+          <button type="button" class="hd-clear-btn" data-actualkey="${actualKey}" data-breakkey="${breakKey}" style="display:${actualVal ? 'block':'none'};">Clear</button>
         </div>
       `;
     }
@@ -2086,6 +2112,7 @@ function renderHours(){
     const endVal = endInp.value;
     const wk = currentWeekShifts();
     const clearBtn = card.querySelector('.hd-clear-btn');
+    const breakRow = card.querySelector('.hd-break-row');
 
     if(startVal && endVal){
       const combined = `${startVal}-${endVal}`;
@@ -2094,6 +2121,7 @@ function renderHours(){
       startInp.classList.add('filled');
       endInp.classList.add('filled');
       if(clearBtn) clearBtn.style.display = 'block';
+      if(breakRow) breakRow.style.display = 'flex';
       logChange(`Logged ${actualKey.split('|')[2]}'s actual hours as "${combined}" for ${actualKey.split('|')[1]}`);
       updateHoursTotal();
       queueSave();
@@ -2104,6 +2132,7 @@ function renderHours(){
       startInp.classList.remove('filled');
       endInp.classList.remove('filled');
       if(clearBtn) clearBtn.style.display = 'none';
+      if(breakRow) breakRow.style.display = 'none';
       updateHoursTotal();
       queueSave();
     }
@@ -2119,21 +2148,52 @@ function renderHours(){
     });
   });
 
+  // Break minutes: saved on its own, capped at a sane range, doesn't affect
+  // whether a day counts as "logged" (that's driven by start/end).
+  list.querySelectorAll('input.hd-break').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const breakKey = inp.getAttribute('data-breakkey');
+      const wk = currentWeekShifts();
+      let mins = parseInt(inp.value, 10);
+      if(isNaN(mins) || mins < 0) mins = 0;
+      if(mins > 600) mins = 600;
+      inp.value = mins || '';
+      AppState.locallyTouched.add(breakKey);
+      if(mins > 0){
+        wk[breakKey] = String(mins);
+        inp.classList.add('filled');
+        logChange(`Logged a ${mins}-minute break for ${breakKey.split('|')[2]} on ${breakKey.split('|')[1]}`);
+      } else {
+        delete wk[breakKey];
+        inp.classList.remove('filled');
+      }
+      updateHoursTotal();
+      queueSave();
+    });
+  });
+
   // Explicit Clear button \u2014 native time inputs don't reliably expose an
   // obvious way to reset to empty on every phone, so this covers all devices.
   list.querySelectorAll('.hd-clear-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const actualKey = btn.getAttribute('data-actualkey');
+      const breakKey = btn.getAttribute('data-breakkey');
       const card = btn.closest('.hours-day-card');
       const startInp = card.querySelector('input[data-part="start"]');
       const endInp = card.querySelector('input[data-part="end"]');
+      const breakInp = card.querySelector('input.hd-break');
+      const breakRow = card.querySelector('.hd-break-row');
       const wk = currentWeekShifts();
       AppState.locallyTouched.add(actualKey);
+      AppState.locallyTouched.add(breakKey);
       delete wk[actualKey];
+      delete wk[breakKey];
       startInp.value = '';
       endInp.value = '';
       startInp.classList.remove('filled');
       endInp.classList.remove('filled');
+      if(breakInp){ breakInp.value = ''; breakInp.classList.remove('filled'); }
+      if(breakRow) breakRow.style.display = 'none';
       btn.style.display = 'none';
       logChange(`Cleared ${actualKey.split('|')[2]}'s logged hours for ${actualKey.split('|')[1]}`);
       updateHoursTotal();
@@ -2582,7 +2642,7 @@ function csvCell(val){
 
 /** Builds and downloads a CSV of everyone's logged (actual) hours between two dates (inclusive). */
 function exportHoursCsv(start, end, filenameSuffix, emptyMessage){
-  const rows = [['Date', 'Day', 'Name', 'Start', 'End', 'Hours']];
+  const rows = [['Date', 'Day', 'Name', 'Start', 'End', 'Break (min)', 'Hours']];
   let cursor = new Date(start);
   while(cursor <= end){
     const iso = fmtISO(cursor);
@@ -2595,12 +2655,13 @@ function exportHoursCsv(start, end, filenameSuffix, emptyMessage){
       if(!actual) return; // only actually-worked hours \u2014 no scheduled-only noise
       const r = parseTimeRange(actual);
       if(!r) return;
-      const hrs = r.durationMin / 60;
+      const breakMin = parseInt(wk['break|' + iso + '|' + name], 10) || 0;
+      const hrs = Math.max(0, r.durationMin - breakMin) / 60;
       const [s, e] = actual.split(/-|\u2013|\u2014/);
       // Comma as decimal separator (e.g. "8,5") since this is built for Dutch
       // accounting/bookkeeping import, where that's the expected format.
       const hrsStr = (hrs % 1 === 0 ? String(hrs) : hrs.toFixed(2)).replace('.', ',');
-      rows.push([iso, dayLabel, name, s, e, hrsStr]);
+      rows.push([iso, dayLabel, name, s, e, breakMin || '', hrsStr]);
     });
     cursor = addDays(cursor, 1);
   }
