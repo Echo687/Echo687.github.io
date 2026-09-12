@@ -209,7 +209,11 @@
   .setup-warning code{background:#fff;padding:1px 5px;border-radius:2px;font-size:12px;}
 
   .today-strip{background:var(--accent);color:#fff;border-radius:3px;padding:10px 12px;margin:10px 10px 0;box-shadow:0 4px 14px rgba(193,80,46,0.25);}
-  .today-strip .t-label{font-size:10px;text-transform:uppercase;letter-spacing:0.12em;opacity:0.85;margin-bottom:6px;font-weight:700;}
+  .today-strip .t-toggle-btn{width:100%;background:none;border:none;padding:0;margin:0;display:flex;align-items:center;gap:8px;cursor:pointer;text-align:left;color:#fff;}
+  .today-strip .t-toggle-label{font-size:10px;text-transform:uppercase;letter-spacing:0.12em;opacity:0.85;font-weight:700;flex:0 0 auto;}
+  .today-strip .t-toggle-summary{font-size:12px;opacity:0.95;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .today-strip .t-toggle-chevron{font-size:12px;opacity:0.85;flex:0 0 auto;}
+  .today-strip .t-body{margin-top:8px;}
   .today-strip .t-row{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;}
   .today-strip .t-row b{font-weight:700;}
   .today-strip .t-empty{font-size:13px;opacity:0.9;}
@@ -304,7 +308,11 @@
   table.ov-grid thead th.closed-head{background:#3A342C;color:#A69B8A;}
   table.ov-grid thead th.closed-head .closed-tag{font-size:8px;font-weight:800;letter-spacing:0.08em;color:#C99A6B;margin-top:2px;}
   body.dark-mode table.ov-grid thead th.closed-head{background:#1A1712;color:#7A7062;}
-  .unresolved-panel .up-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#8A6512;margin-bottom:8px;}
+  .unresolved-panel .up-toggle-btn{width:100%;background:none;border:none;padding:0;margin-bottom:0;display:flex;align-items:center;gap:6px;cursor:pointer;text-align:left;}
+  .unresolved-panel .up-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#8A6512;flex:0 0 auto;}
+  .unresolved-panel .up-preview{font-size:11px;color:#A6821E;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .unresolved-panel .up-chevron{font-size:12px;color:#8A6512;flex:0 0 auto;}
+  .unresolved-panel .up-body{margin-top:8px;}
   .unresolved-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid #E8C88A;border-radius:2px;padding:6px 8px;margin-bottom:5px;font-size:11px;cursor:pointer;}
   .unresolved-row:last-child{margin-bottom:0;}
   .unresolved-row .ur-name{font-weight:700;}
@@ -423,7 +431,6 @@
 </div>
 
 <div id="todayStrip" class="today-strip" style="display:none;">
-  <div class="t-label">Today</div>
   <div id="todayContent"></div>
 </div>
 
@@ -1487,9 +1494,24 @@ document.getElementById('whoCancel').addEventListener('click', ()=>{
 });
 
 // ---------- today strip ----------
+/** Remembers whether the Today banner is expanded, across re-renders (resets on page load). */
+let todayStripExpanded = false;
+
+/**
+ * Renders the "Today" summary banner. Only shown on the Owner tab \u2014 on
+ * Fill in / Hours / My Schedule, seeing everyone else's status is just noise
+ * for someone filling in their own single day. Collapsible: shows a compact
+ * one-line summary by default, expand to see everyone.
+ */
 function renderTodayStrip(){
   const strip = document.getElementById('todayStrip');
   const content = document.getElementById('todayContent');
+
+  if(viewMode !== 'owner'){
+    strip.style.display = 'none';
+    return;
+  }
+
   const today = new Date();
   const todayIso = fmtISO(today);
   const wk = shiftsForDate(todayIso);
@@ -1499,16 +1521,34 @@ function renderTodayStrip(){
     .map(name => ({ name, time: wk[todayIso + '|' + name], avail: wk['avail|' + todayIso + '|' + name] }))
     .filter(r => r.time || r.avail);
 
-  let html = note ? `<div class="t-note">\u{1F4DD} ${escapeHtml(note)}</div>` : '';
+  const workingCount = rows.filter(r => r.time).length;
+  const offCount = rows.filter(r => !r.time && r.avail === 'no').length;
+  const summary = rows.length === 0
+    ? 'Nobody scheduled today yet'
+    : `${workingCount} working, ${offCount} unavailable`;
+
+  let bodyHtml = note ? `<div class="t-note">\u{1F4DD} ${escapeHtml(note)}</div>` : '';
   if(rows.length === 0){
-    html += `<div class="t-empty">Nobody scheduled today yet</div>`;
+    bodyHtml += `<div class="t-empty">Nobody scheduled today yet</div>`;
   } else {
-    html += rows.map(r => {
+    bodyHtml += rows.map(r => {
       const label = r.time ? r.time : (r.avail === 'no' ? 'Unavailable' : 'Available');
       return `<div class="t-row"><span>${escapeHtml(r.name)}</span><b>${escapeHtml(label)}</b></div>`;
     }).join('');
   }
-  content.innerHTML = html;
+
+  content.innerHTML = `
+    <button type="button" class="t-toggle-btn">
+      <span class="t-toggle-label">TODAY</span>
+      <span class="t-toggle-summary">${escapeHtml(summary)}</span>
+      <span class="t-toggle-chevron">${todayStripExpanded ? '\u25be' : '\u25b8'}</span>
+    </button>
+    <div class="t-body" style="display:${todayStripExpanded ? 'block':'none'};">${bodyHtml}</div>
+  `;
+  content.querySelector('.t-toggle-btn').addEventListener('click', ()=>{
+    todayStripExpanded = !todayStripExpanded;
+    renderTodayStrip();
+  });
   strip.style.display = 'block';
 }
 
@@ -1689,6 +1729,9 @@ function assignShiftDirect(key, value){
   queueSave();
 }
 
+/** Remembers whether the "Unresolved closing times" panel is expanded, across re-renders. */
+let unresolvedPanelExpanded = false;
+
 function renderUnresolvedPanel(){
   const panel = document.getElementById('unresolvedPanel');
   const items = findUnresolvedClosings();
@@ -1705,11 +1748,25 @@ function renderUnresolvedPanel(){
       <span class="ur-fix">Set real time \u203a</span>
     </div>`;
   }).join('');
+
+  const uniqueNames = [...new Set(items.map(i=>i.name))];
+  const previewNames = uniqueNames.length <= 2
+    ? uniqueNames.join(', ')
+    : `${uniqueNames.slice(0,2).join(', ')} +${uniqueNames.length - 2}`;
+
   panel.innerHTML = `
-    <div class="up-title">&#9888;&#65039; Unresolved closing times (${items.length})</div>
-    ${rows}
+    <button type="button" class="up-toggle-btn">
+      <span class="up-title">&#9888;&#65039; Unresolved closing times (${items.length})</span>
+      <span class="up-preview">${escapeHtml(previewNames)}</span>
+      <span class="up-chevron">${unresolvedPanelExpanded ? '\u25be' : '\u25b8'}</span>
+    </button>
+    <div class="up-body" style="display:${unresolvedPanelExpanded ? 'block':'none'};">${rows}</div>
   `;
   panel.style.display = 'block';
+  panel.querySelector('.up-toggle-btn').addEventListener('click', ()=>{
+    unresolvedPanelExpanded = !unresolvedPanelExpanded;
+    renderUnresolvedPanel();
+  });
   panel.querySelectorAll('.unresolved-row').forEach(row=>{
     row.addEventListener('click', ()=>{
       openAssignDialog(row.getAttribute('data-name'), row.getAttribute('data-iso'), row.getAttribute('data-day'));
