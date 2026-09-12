@@ -1620,6 +1620,7 @@ function findConflicts(){
  * the table below) who doesn't have an actual shift time assigned yet.
  */
 function findAvailableNoShift(){
+  const todayISO = fmtISO(new Date());
   const shifts = currentWeekShifts();
   const results = [];
   Object.keys(shifts).forEach(k=>{
@@ -1627,6 +1628,7 @@ function findAvailableNoShift(){
     if(shifts[k] !== 'yes') return;
     const parts = k.split('|'); // ['avail', iso, name]
     const iso = parts[1], name = parts[2];
+    if(iso < todayISO) return; // that day has already happened \u2014 nothing to assign anymore
     if(shifts['closed|' + iso] === '1') return; // day is marked closed, nothing to assign
     const time = shifts[iso + '|' + name];
     if(!time){
