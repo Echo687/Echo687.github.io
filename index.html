@@ -1607,7 +1607,7 @@ function findConflicts(){
     const parts = k.split('|'); // ['avail', iso, name]
     const iso = parts[1], name = parts[2];
     const time = shifts[iso + '|' + name];
-    if(time){
+    if(time && shifts['confirmedOverride|' + iso + '|' + name] !== '1'){
       results.push({ iso, name, value: time });
     }
   });
@@ -1723,6 +1723,9 @@ function assignShiftDirect(key, value){
   const wk = allWeeks[wkKey];
   AppState.locallyTouched.add(key);
   captureUndoSnapshot(`assigning ${name}'s shift on ${iso}`);
+  const confirmedKeyDirect = 'confirmedOverride|' + iso + '|' + name;
+  wk[confirmedKeyDirect] = '1';
+  AppState.locallyTouched.add(confirmedKeyDirect);
   wk[key] = value;
   logChange(`Assigned ${name} to ${value} on ${iso}`);
   renderOverview();
@@ -1890,9 +1893,17 @@ function renderOverview(){
       else if(avail === 'no'){ cls = 'no'; label = 'No'; statusText = 'unavailable'; }
       else if(avail === 'yes'){ cls = 'yes-only'; label = 'OK'; statusText = 'available, no shift yet'; }
       if(time && avail === 'no'){
-        cls = 'conflict';
-        label = '\u26d4 ' + escapeHtml(time);
-        statusText = `conflict \u2014 scheduled ${time} but marked unavailable`;
+        if(shifts['confirmedOverride|' + c.iso + '|' + name] === '1'){
+          // Owner assigned this shift knowing the person was marked unavailable \u2014
+          // treat it as a completely normal scheduled shift, no warning styling.
+          cls = '';
+          label = escapeHtml(time);
+          statusText = `scheduled ${time}`;
+        } else {
+          cls = 'conflict';
+          label = '\u26d4 ' + escapeHtml(time);
+          statusText = `conflict \u2014 scheduled ${time} but marked unavailable`;
+        }
       }
       if(c.isToday && time && isWorkingNow(time, nowMin) && avail !== 'no'){
         cls = 'live';
@@ -2031,8 +2042,14 @@ document.getElementById('assignSave').addEventListener('click', ()=>{
   const [iso, name] = key.split('|');
   AppState.locallyTouched.add(key);
   captureUndoSnapshot(`assigning ${name}'s shift on ${iso}`);
+  // An owner assigning a shift is the final word: if this person is marked
+  // unavailable that day, assigning anyway silently overrides it \u2014 no conflict
+  // warning, the cell just reads as a normal scheduled shift.
+  const confirmedKey = 'confirmedOverride|' + iso + '|' + name;
   if(val){
     wk[key] = val;
+    wk[confirmedKey] = '1';
+    AppState.locallyTouched.add(confirmedKey);
     logChange(`Assigned ${name} to ${val} on ${iso}`);
 
     // If this is a real, resolved time (not another "...Closing" placeholder)
@@ -2047,6 +2064,7 @@ document.getElementById('assignSave').addEventListener('click', ()=>{
     }
   } else {
     delete wk[key];
+    if(wk[confirmedKey]){ delete wk[confirmedKey]; AppState.locallyTouched.add(confirmedKey); }
     logChange(`Cleared ${name}'s shift on ${iso}`);
   }
   document.getElementById('assignDialog').close();
